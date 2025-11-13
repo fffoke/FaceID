@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>FacePanel — Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- SockJS + STOMP -->
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+    <!-- Общие стили -->
+    <link rel="stylesheet" href="/css/common.css">
+
+    <style>
+
+        #logs-container { 
+            margin-top: 16px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 8px; 
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .log-item {
+            background: #1b1b1b;
+            padding: 12px 18px;
+            border-radius: 10px;
+            display: grid;
+            grid-template-columns: 80px 1fr 120px 120px 1fr;
+            gap: 20px;
+            align-items: center;
+            transition: all 0.3s ease;
+            border-left: 4px solid #4cd137;
+        }
+
+        .log-item.new {
+            background: rgba(76, 209, 55, 0.15);
+            box-shadow: 0 0 6px rgba(76, 209, 55, 0.4);
+            animation: highlight 2s ease-out;
+        }
+
+        @keyframes highlight {
+            0% { background: rgba(76, 209, 55, 0.3); }
+            100% { background: rgba(76, 209, 55, 0.15); }
+        }
+
+        .log-time {
+            color: #4cd137;
+            font-weight: bold;
+            font-family: monospace;
+            text-align: center;
+        }
+
+        .log-person-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .log-person-image {
+            width: 40px;
+            height: 40px;
+        }
+
+        .log-person-image img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid rgba(76, 209, 55, 0.3);
+        }
+
+        .log-person-image-placeholder {
+            width: 40px;
+            height: 40px;
+            background: rgba(76, 209, 55, 0.1);
+            border: 2px solid rgba(76, 209, 55, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .log-person-image-placeholder .placeholder-icon {
+            font-size: 1.2em;
+            color: rgba(76, 209, 55, 0.6);
+        }
+
+        .log-person {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .log-event {
+            background: #4cd137;
+            color: #000;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+            text-align: center;
+            white-space: nowrap;
+            min-width: 100px;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .log-group {
+            color: #4cd137;
+            font-size: 0.9em;
+            font-weight: 500;
+            text-align: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .log-session {
+            color: #aaa;
+            font-size: 0.9em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            min-width: 100px;
+            max-width: 120px;
+            text-align: center;
+        }
+
+        footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 0.8em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Включаем общий хедер -->
+<div th:replace="~{fragments/header :: header}"></div>
+
+<!-- Основной контент -->
+<main class="main-content">
+    <div class="card">
+        <h1>
+            <span class="icon icon-stats icon-large"></span>
+            Логи распознавания сегодня
+        </h1>
+        
+        <div id="logs-container">
+            <div th:each="log : ${logs}" class="log-item" id="log-[[${log.id}]]">
+                <div class="log-time" th:text="${#temporals.format(log.timestamp, 'HH:mm:ss')}">12:34:56</div>
+                <div class="log-person-info">
+                    <div class="log-person-image" th:if="${log.person != null and log.person.photoFilename != null and log.person.photoFilename != ''}">
+                        <img th:src="@{'/upload/faces/' + ${log.person.photoFilename} + ${personService.getPhotoExtension(log.person.photoFilename)}}" 
+                             th:alt="${log.person.firstName + ' ' + log.person.lastName}"
+                             onerror="this.style.display='none'">
+                    </div>
+                    <div class="log-person-image-placeholder" th:unless="${log.person != null and log.person.photoFilename != null and log.person.photoFilename != ''}">
+                        <div class="placeholder-icon">👤</div>
+                    </div>
+                    <div class="log-person" th:text="${log.person != null ? (log.person.middleName != null and log.person.middleName != '' ? (log.person.lastName != null and log.person.lastName != '' ? log.person.lastName + ' ' : '') + log.person.firstName + ' ' + log.person.middleName : log.person.firstName + (log.person.lastName != null and log.person.lastName != '' ? ' ' + log.person.lastName : '')) : 'Неизвестно'}">Имя Фамилия</div>
+                </div>
+                <div class="log-event" th:text="${log.eventType}">DETECTED</div>
+                <div class="log-session" th:text="${log.session != null ? log.session.name : 'Без мероприятия'}">Мероприятие</div>
+                <div class="log-group" th:text="${log.person != null and log.person.group != null ? log.person.group : 'Без группы'}">Группа</div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer style="text-align: center; margin-top: 30px; color: #666; font-size: 0.9em;">
+    FacePanel Rework © 2025
+</footer>
+
+<script>
+    let stompClient = null;
+
+    function connect() {
+        console.log('🔄 Attempting to connect to WebSocket...');
+        const socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+        stompClient.debug = function(str) {
+            console.log('STOMP: ' + str);
+        };
+
+        stompClient.connect({}, function (frame) {
+            console.info('✅ WebSocket Connected:', frame);
+            updateConnectionStatus(true);
+            stompClient.subscribe('/topic/attendance', function (message) {
+                console.log('📨 Received message:', message.body);
+                try {
+                    const data = JSON.parse(message.body);
+                    console.log('📊 Parsed data:', data);
+                    handleMessage(data);
+                } catch (e) {
+                    console.error('❌ Bad message', e, message.body);
+                }
+            });
+            console.log('📡 Subscribed to /topic/attendance');
+        }, function (error) {
+            console.error('⚠️ WebSocket connection error:', error);
+            updateConnectionStatus(false);
+            console.log('🔄 Retrying connection in 3 seconds...');
+            setTimeout(connect, 3000); // авто-реконнект через 3 сек
+        });
+    }
+
+    function updateConnectionStatus(connected) {
+        const statusEl = document.getElementById('connection-status');
+        if (connected) {
+            statusEl.textContent = '🟢 Подключено';
+            statusEl.className = 'connection-status connected';
+        } else {
+            statusEl.textContent = '🔴 Отключено';
+            statusEl.className = 'connection-status disconnected';
+        }
+    }
+
+    function handleMessage(msg) {
+        // msg expected: { id, personId, personName, timestamp, eventType, sessionId }
+        
+        // Создаем новый элемент лога
+        const logsContainer = document.getElementById('logs-container');
+        const time = new Date(msg.timestamp).toLocaleTimeString();
+        
+        const logElement = document.createElement('div');
+        logElement.className = 'log-item new';
+        logElement.id = 'log-' + msg.id;
+        
+        // Создаем элементы через DOM API для правильного отображения
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'log-time';
+        timeDiv.textContent = time;
+        
+        const personInfoDiv = document.createElement('div');
+        personInfoDiv.className = 'log-person-info';
+        
+        // Создаем аватарку
+        const hasPhoto = msg.personPhotoFilename && msg.personPhotoFilename !== '' && msg.personPhotoFilename !== null;
+        const photoExtension = msg.personPhotoExtension || '.jpg';
+        
+        
+        if (hasPhoto) {
+            const imageDiv = document.createElement('div');
+            imageDiv.className = 'log-person-image';
+            
+            const img = document.createElement('img');
+            img.src = `/upload/faces/${msg.personPhotoFilename}${photoExtension}`;
+            img.alt = msg.personName;
+            img.onerror = function() {
+                this.style.display = 'none';
+                this.parentElement.innerHTML = '<div class="placeholder-icon">👤</div>';
+            };
+            
+            imageDiv.appendChild(img);
+            personInfoDiv.appendChild(imageDiv);
+        } else {
+            const placeholderDiv = document.createElement('div');
+            placeholderDiv.className = 'log-person-image-placeholder';
+            placeholderDiv.innerHTML = '<div class="placeholder-icon">👤</div>';
+            personInfoDiv.appendChild(placeholderDiv);
+        }
+        
+        // Создаем имя персоны
+        const personDiv = document.createElement('div');
+        personDiv.className = 'log-person';
+        personDiv.textContent = msg.personName;
+        personInfoDiv.appendChild(personDiv);
+        
+        // Создаем группу
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'log-group';
+        groupDiv.textContent = msg.personGroup || 'Без группы';
+        
+        // Создаем событие
+        const eventDiv = document.createElement('div');
+        eventDiv.className = 'log-event';
+        eventDiv.textContent = msg.eventType;
+        
+        // Создаем сессию
+        const sessionDiv = document.createElement('div');
+        sessionDiv.className = 'log-session';
+        sessionDiv.textContent = msg.sessionName || 'Без мероприятия';
+        
+        // Добавляем все элементы в logElement в правильном порядке
+        logElement.appendChild(timeDiv);           // Колонка 1: время
+        logElement.appendChild(personInfoDiv);     // Колонка 2: персоны (гибкая)
+        logElement.appendChild(eventDiv);          // Колонка 3: событие (фиксированная)
+        logElement.appendChild(sessionDiv);        // Колонка 4: сессия (фиксированная)
+        logElement.appendChild(groupDiv);          // Колонка 5: группа (гибкая)
+        
+        // Добавляем в начало списка
+        logsContainer.insertBefore(logElement, logsContainer.firstChild);
+        
+        // Убираем класс new через 2 секунды
+        setTimeout(() => {
+            logElement.classList.remove('new');
+        }, 2000);
+        
+        console.log('🎉 Added new log entry for:', msg.personName);
+    }
+
+    connect();
+</script>
+
+</body>
+</html>

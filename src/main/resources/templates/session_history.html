@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>История мероприятия</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Общие стили -->
+    <link rel="stylesheet" href="/css/common.css">
+    
+    <style>
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: #1b1b1b;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .session-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #333;
+        }
+
+        .session-info h2 {
+            margin: 0;
+            color: #fff;
+        }
+
+        .session-details {
+            color: #aaa;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .session-status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .status-completed {
+            background: #ff4757;
+            color: #fff;
+        }
+
+        .status-active {
+            background: #4cd137;
+            color: #000;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: #222;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid #333;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #aaa;
+            font-size: 0.9em;
+        }
+
+        .stat-total .stat-number { color: #4cd137; }
+        .stat-present .stat-number { color: #4cd137; }
+        .stat-absent .stat-number { color: #ff4757; }
+
+        .attendance-list {
+            margin-top: 20px;
+        }
+
+        .person-attendance {
+            display: grid;
+            grid-template-columns: 1fr 120px 100px;
+            gap: 20px;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #222;
+            border-radius: 8px;
+            border: 1px solid #333;
+            transition: all 0.3s ease;
+        }
+
+        .person-attendance:hover {
+            border-color: #4cd137;
+            transform: translateY(-1px);
+        }
+
+        .person-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            overflow: hidden;
+        }
+
+        .person-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #4cd137;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #000;
+            font-weight: bold;
+            font-size: 1.2em;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .person-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .person-details {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .person-name {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+
+        .person-position {
+            color: #aaa;
+            font-size: 0.9em;
+        }
+        
+        .person-group {
+            color: #4cd137;
+            font-size: 0.9em;
+            margin-top: 3px;
+            font-weight: 500;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .attendance-status {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            height: 100%;
+        }
+
+        .status-present {
+            color: #4cd137;
+            font-weight: bold;
+            padding: 8px 12px;
+            background: rgba(76, 209, 55, 0.1);
+            border: 1px solid rgba(76, 209, 55, 0.3);
+            border-radius: 20px;
+            font-size: 0.9em;
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .status-absent {
+            color: #ff4757;
+            font-weight: bold;
+            padding: 8px 12px;
+            background: rgba(255, 71, 87, 0.1);
+            border: 1px solid rgba(255, 71, 87, 0.3);
+            border-radius: 20px;
+            font-size: 0.9em;
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .attendance-time {
+            font-size: 0.85em;
+            color: #aaa;
+            margin-top: 5px;
+            text-align: center;
+        }
+
+        .time-value {
+            color: #4cd137;
+            font-weight: bold;
+            font-family: monospace;
+            background: rgba(76, 209, 55, 0.1);
+            padding: 4px 8px;
+            border-radius: 12px;
+            border: 1px solid rgba(76, 209, 55, 0.2);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #aaa;
+        }
+
+        .back-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #4cd137;
+            color: #000;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+            background: #44a03a;
+            color: #fff;
+        }
+
+        .session-duration {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Включаем общий хедер -->
+<div th:replace="~{fragments/header :: header}"></div>
+
+<!-- Основной контент -->
+<main class="main-content">
+    <div class="card">
+        <h1>📋 История мероприятия</h1>
+        <div>
+            <a href="/session" class="back-button">⬅ Назад к мероприятиям</a>
+        </div>
+
+    <div class="card">
+        <div class="session-header">
+            <div class="session-info">
+                <h2 th:text="${sessionData.name}">Название мероприятия</h2>
+                <div class="session-details">
+                    <div>
+                        <span class="icon icon-time"></span>
+                        Начало: <span th:text="${sessionData.startTime != null ? #temporals.format(sessionData.startTime, 'dd.MM.yyyy HH:mm') : 'Не указано'}">01.01.2024 12:00</span>
+                    </div>
+                    <div th:if="${sessionData.endTime != null}">
+                        <span class="icon icon-time"></span>
+                        Окончание: <span th:text="${#temporals.format(sessionData.endTime, 'dd.MM.yyyy HH:mm')}">01.01.2024 14:00</span>
+                    </div>
+                    <div th:unless="${sessionData.endTime != null}">
+                        <span class="icon icon-time"></span>
+                        Окончание: <span>Не завершено</span>
+                    </div>
+                    <div class="session-duration" th:if="${sessionData.endTime != null}">
+                        <span class="icon icon-stats"></span>
+                        Продолжительность: <span th:text="${#temporals.format(sessionData.startTime, 'HH:mm')} + ' - ' + ${#temporals.format(sessionData.endTime, 'HH:mm')}">12:00 - 14:00</span>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <span class="session-status" th:classappend="${sessionData.active} ? 'status-active' : 'status-completed'"
+                      th:text="${sessionData.active} ? 'АКТИВНО' : 'ЗАВЕРШЕНО'">ЗАВЕРШЕНО</span>
+            </div>
+        </div>
+
+        <!-- Статистика мероприятия -->
+        <div class="stats-grid">
+            <div class="stat-card stat-total">
+                <div class="stat-number" th:text="${persons != null ? #lists.size(persons) : 0}">0</div>
+                <div class="stat-label">Всего персон</div>
+            </div>
+            <div class="stat-card stat-present">
+                <div class="stat-number" th:text="${attendanceStatus != null ? #maps.size(attendanceStatus) : 0}">0</div>
+                <div class="stat-label">Присутствовали</div>
+            </div>
+            <div class="stat-card stat-absent">
+                <div class="stat-number" th:text="${persons != null and attendanceStatus != null ? #lists.size(persons) - #maps.size(attendanceStatus) : 0}">0</div>
+                <div class="stat-label">Отсутствовали</div>
+            </div>
+        </div>
+
+        <!-- Список персон -->
+        <div class="attendance-list" th:if="${persons != null and !persons.isEmpty()}">
+            <h3>👥 Список участников</h3>
+            <div th:each="person : ${persons}" class="person-attendance">
+                <div class="person-info">
+                    <div class="person-avatar" th:if="${person.photoFilename != null and person.photoFilename != ''}">
+                        <img th:src="@{'/upload/faces/' + ${person.photoFilename} + ${personService.getPhotoExtension(person.photoFilename)}}" 
+                             th:alt="${person.firstName + ' ' + person.lastName}"
+                             onerror="this.style.display='none'; this.parentElement.innerHTML='${person.firstName.charAt(0)}';">
+                    </div>
+                    <div class="person-avatar" th:unless="${person.photoFilename != null and person.photoFilename != ''}" th:text="${person.firstName.charAt(0)}">A</div>
+                    <div class="person-details">
+                        <div class="person-name" th:text="${person.firstName} + ${person.lastName != null ? ' ' + person.lastName : ''}">Имя Фамилия</div>
+                        <div class="person-position" th:text="${person.position}">Должность</div>
+                        <div class="person-group" th:text="'Группа: ' + ${person.group != null ? person.group : 'Не указана'}">Группа: 9-2-ПО-23</div>
+                    </div>
+                </div>
+                <div class="attendance-status">
+                    <span th:if="${attendanceStatus != null and person.id != null and attendanceStatus.containsKey(person.id) and attendanceStatus[person.id]}" 
+                          class="status-present">
+                        <span class="icon icon-present"></span>
+                        Присутствовал
+                    </span>
+                    <span th:unless="${attendanceStatus != null and person.id != null and attendanceStatus.containsKey(person.id) and attendanceStatus[person.id]}" 
+                          class="status-absent">
+                        <span class="icon icon-absent"></span>
+                        Отсутствовал
+                    </span>
+                    <div class="attendance-time" th:if="${attendanceStatus != null and person.id != null and attendanceStatus.containsKey(person.id) and attendanceStatus[person.id]}">
+                        <span class="time-value" th:text="${attendanceTimes != null and attendanceTimes.containsKey(person.id) ? #temporals.format(attendanceTimes[person.id], 'HH:mm:ss') : '--:--:--'}">12:34:56</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="empty-state" th:if="${persons == null or persons.isEmpty()}">
+            <h3>Нет участников</h3>
+            <p>В этом мероприятии не было зарегистрированных участников.</p>
+        </div>
+    </div>
+</main>
+</body>
+</html>

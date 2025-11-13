@@ -1,0 +1,44 @@
+# IDE и системные файлы
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Java/Maven
+target/
+!.mvn/wrapper/maven-wrapper.properties
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.whl
+
+# Исключить модели и веса
+/OpenCVRework/models/
+/OpenCVRework/*.onnx
+/OpenCVRework/*.whl
+/OpenCVRework/*.pt
+/OpenCVRework/*.pth
+/OpenCVRework/*.bin
+/OpenCVRework/*.tflite
+/OpenCVRework/*.ckpt
+/OpenCVRework/*.weights
+
+# Исключить лица
+/faces/
+
+# Прочее
+*.log
+*.tmp
+*.bak
+.DS_Store
+
+# Разрешённые файлы
+!.gitignore
+!pom.xml
+!requirements.txt
+!src/
+!README.md

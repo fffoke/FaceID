@@ -1,0 +1,415 @@
+/* Общие стили для всех страниц */
+body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 100%);
+    color: #eee;
+    padding: 0;
+    margin: 0;
+    min-height: 100vh;
+}
+
+/* ===============================
+   КРАСИВЫЕ ИКОНКИ
+   =============================== */
+
+/* Иконки для навигации */
+.icon-home::before { content: "🏠"; }
+.icon-persons::before { content: "👥"; }
+.icon-sessions::before { content: "📅"; }
+.icon-history::before { content: "📋"; }
+
+/* Иконки статусов */
+.icon-present::before { content: "✓"; }
+.icon-absent::before { content: "✗"; }
+.icon-detected::before { content: "👁"; }
+.icon-enter::before { content: "→"; }
+.icon-leave::before { content: "←"; }
+
+/* Иконки действий */
+.icon-add::before { content: "+"; }
+.icon-edit::before { content: "✏"; }
+.icon-delete::before { content: "🗑"; }
+.icon-save::before { content: "💾"; }
+.icon-cancel::before { content: "❌"; }
+
+/* Иконки информации */
+.icon-time::before { content: "⏰"; }
+.icon-group::before { content: "👥"; }
+.icon-position::before { content: "💼"; }
+.icon-photo::before { content: "📷"; }
+.icon-stats::before { content: "📊"; }
+
+/* Стилизация иконок */
+.icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(76, 209, 55, 0.1);
+    border: 1px solid rgba(76, 209, 55, 0.3);
+    font-size: 16px;
+    font-weight: bold;
+    color: #4cd137;
+    margin-right: 8px;
+    transition: all 0.3s ease;
+}
+
+.icon:hover {
+    background: rgba(76, 209, 55, 0.2);
+    border-color: rgba(76, 209, 55, 0.5);
+    transform: scale(1.1);
+}
+
+/* Иконки статусов с цветами */
+.icon-present {
+    background: rgba(76, 209, 55, 0.1);
+    border-color: rgba(76, 209, 55, 0.3);
+    color: #4cd137;
+}
+
+.icon-absent {
+    background: rgba(255, 71, 87, 0.1);
+    border-color: rgba(255, 71, 87, 0.3);
+    color: #ff4757;
+}
+
+.icon-detected {
+    background: rgba(76, 209, 55, 0.1);
+    border-color: rgba(76, 209, 55, 0.3);
+    color: #4cd137;
+}
+
+.icon-enter {
+    background: rgba(0, 123, 255, 0.1);
+    border-color: rgba(0, 123, 255, 0.3);
+    color: #007bff;
+}
+
+.icon-leave {
+    background: rgba(255, 71, 87, 0.1);
+    border-color: rgba(255, 71, 87, 0.3);
+    color: #ff4757;
+}
+
+/* Иконки действий */
+.icon-add {
+    background: rgba(76, 209, 55, 0.1);
+    border-color: rgba(76, 209, 55, 0.3);
+    color: #4cd137;
+}
+
+.icon-edit {
+    background: rgba(255, 193, 7, 0.1);
+    border-color: rgba(255, 193, 7, 0.3);
+    color: #ffc107;
+}
+
+.icon-delete {
+    background: rgba(255, 71, 87, 0.1);
+    border-color: rgba(255, 71, 87, 0.3);
+    color: #ff4757;
+}
+
+.icon-save {
+    background: rgba(76, 209, 55, 0.1);
+    border-color: rgba(76, 209, 55, 0.3);
+    color: #4cd137;
+}
+
+.icon-cancel {
+    background: rgba(108, 117, 125, 0.1);
+    border-color: rgba(108, 117, 125, 0.3);
+    color: #6c757d;
+}
+
+/* Иконки информации */
+.icon-time {
+    background: rgba(0, 123, 255, 0.1);
+    border-color: rgba(0, 123, 255, 0.3);
+    color: #007bff;
+}
+
+.icon-group {
+    background: rgba(76, 209, 55, 0.1);
+    border-color: rgba(76, 209, 55, 0.3);
+    color: #4cd137;
+}
+
+.icon-position {
+    background: rgba(255, 193, 7, 0.1);
+    border-color: rgba(255, 193, 7, 0.3);
+    color: #ffc107;
+}
+
+.icon-photo {
+    background: rgba(220, 53, 69, 0.1);
+    border-color: rgba(220, 53, 69, 0.3);
+    color: #dc3545;
+}
+
+.icon-stats {
+    background: rgba(76, 209, 55, 0.1);
+    border-color: rgba(76, 209, 55, 0.3);
+    color: #4cd137;
+}
+
+/* Маленькие иконки для кнопок */
+.icon-small {
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    margin-right: 6px;
+}
+
+/* Большие иконки для заголовков */
+.icon-large {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+    margin-right: 12px;
+}
+
+/* Красивый хедер с стеклянными кнопками */
+.header {
+    background: rgba(27, 27, 27, 0.95);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(76, 209, 55, 0.2);
+    padding: 20px 0;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.header-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.logo {
+    font-size: 1.8em;
+    font-weight: bold;
+    color: #4cd137;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.logo:hover {
+    color: #44a03a;
+    text-decoration: none;
+}
+
+.nav-menu {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.nav-button {
+    background: rgba(76, 209, 55, 0.1);
+    border: 1px solid rgba(76, 209, 55, 0.3);
+    color: #4cd137;
+    padding: 12px 20px;
+    border-radius: 25px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+}
+
+.nav-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(76, 209, 55, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.nav-button:hover::before {
+    left: 100%;
+}
+
+.nav-button:hover {
+    background: rgba(76, 209, 55, 0.2);
+    border-color: rgba(76, 209, 55, 0.5);
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(76, 209, 55, 0.3);
+    text-decoration: none;
+}
+
+.nav-button.active {
+    background: rgba(76, 209, 55, 0.3);
+    border-color: rgba(76, 209, 55, 0.6);
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(76, 209, 55, 0.4);
+}
+
+.connection-status {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 140px;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+.connection-status.connected {
+    background: rgba(76, 209, 55, 0.2);
+    color: #4cd137;
+    border: 1px solid rgba(76, 209, 55, 0.3);
+}
+
+.connection-status.disconnected {
+    background: rgba(255, 71, 87, 0.2);
+    color: #ff4757;
+    border: 1px solid rgba(255, 71, 87, 0.3);
+}
+
+/* Основной контент */
+.main-content {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+/* Карточки */
+.card {
+    background: rgba(27, 27, 27, 0.8);
+    backdrop-filter: blur(20px);
+    padding: 30px;
+    border-radius: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(76, 209, 55, 0.1);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    border-color: rgba(76, 209, 55, 0.3);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Кнопки */
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    font-size: 16px;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.btn:hover::before {
+    left: 100%;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4cd137, #44a03a);
+    color: #000;
+    box-shadow: 0 4px 15px rgba(76, 209, 55, 0.3);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #44a03a, #3d8b33);
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(76, 209, 55, 0.4);
+    text-decoration: none;
+}
+
+.btn-secondary {
+    background: rgba(102, 102, 102, 0.2);
+    color: #fff;
+    border: 1px solid rgba(102, 102, 102, 0.3);
+}
+
+.btn-secondary:hover {
+    background: rgba(102, 102, 102, 0.3);
+    transform: translateY(-2px);
+    text-decoration: none;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #ff4757, #ff3742);
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #ff3742, #ff2f3a);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 71, 87, 0.4);
+    text-decoration: none;
+}
+
+.btn-edit {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+}
+
+.btn-edit:hover {
+    background: linear-gradient(135deg, #0056b3, #004085);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 123, 255, 0.4);
+    text-decoration: none;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        gap: 20px;
+        padding: 0 16px;
+    }
+    
+    .nav-menu {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .main-content {
+        padding: 16px;
+    }
+    
+    .card {
+        padding: 20px;
+    }
+}

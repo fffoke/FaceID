@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>История посещений</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Общие стили -->
+    <link rel="stylesheet" href="/css/common.css">
+    
+    <style>
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .filters {
+            background: #1b1b1b;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 12px rgba(0, 0, 0, 0.4);
+        }
+        
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .filter-group label {
+            color: #fff;
+            font-weight: bold;
+            min-width: 100px;
+        }
+        
+        input, select {
+            padding: 10px;
+            border: 1px solid #444;
+            border-radius: 6px;
+            background: #333;
+            color: #fff;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #4cd137;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            background: #4cd137;
+            color: #000;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            background: #44a03a;
+        }
+        
+        .attendance-list {
+            background: #1b1b1b;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 0 12px rgba(0, 0, 0, 0.4);
+        }
+        
+        .attendance-item {
+            display: grid;
+            grid-template-columns: 1fr 120px 100px 80px;
+            gap: 20px;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid #333;
+            transition: background 0.3s ease;
+        }
+        
+        .attendance-item:hover {
+            background: #222;
+        }
+        
+        .attendance-item:last-child {
+            border-bottom: none;
+        }
+        
+        .person-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .person-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #4cd137;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #000;
+            font-weight: bold;
+            font-size: 1.2em;
+            overflow: hidden;
+        }
+
+        .person-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+        
+        .person-details h3 {
+            margin: 0 0 5px 0;
+            color: #fff;
+            font-size: 1.1em;
+        }
+        
+        .person-details p {
+            margin: 0;
+            color: #aaa;
+            font-size: 0.9em;
+        }
+        
+        .attendance-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .timestamp {
+            color: #fff;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .event-type {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+            text-align: center;
+            white-space: nowrap;
+        }
+        
+        .event-detected {
+            background: #4cd137;
+            color: #000;
+        }
+        
+        .event-enter {
+            background: #007bff;
+            color: #fff;
+        }
+        
+        .event-leave {
+            background: #ff4757;
+            color: #fff;
+        }
+        
+        .session-info {
+            color: #4cd137;
+            font-size: 0.9em;
+            margin-top: 5px;
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .person-group {
+            color: #4cd137;
+            font-size: 0.9em;
+            margin-top: 3px;
+            font-weight: 500;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #aaa;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: #1b1b1b;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            flex: 1;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #4cd137;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #aaa;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Включаем общий хедер -->
+<div th:replace="~{fragments/header :: header}"></div>
+
+<!-- Основной контент -->
+<main class="main-content">
+    <div class="card">
+        <h1>
+            <span class="icon icon-stats icon-large"></span>
+            История посещений
+        </h1>
+
+    <!-- Фильтры -->
+    <div class="filters">
+        <h2>🔍 Фильтры</h2>
+        <form method="get" action="/attendance">
+            <div class="filter-group">
+                <label for="date">Дата:</label>
+                <input type="date" id="date" name="date" th:value="${selectedDate}" />
+            </div>
+            <div class="filter-group">
+                <button type="submit">🔍 Применить фильтры</button>
+                <a href="/attendance" style="color: #4cd137;">🔄 Сбросить</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Статистика -->
+    <div class="stats" th:if="${attendances != null and !attendances.isEmpty()}">
+        <div class="stat-card">
+            <div class="stat-number" th:text="${#lists.size(attendances)}">0</div>
+            <div class="stat-label">Всего записей</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" th:text="${#sets.size(attendances.![person.id])}">0</div>
+            <div class="stat-label">Уникальных людей</div>
+        </div>
+    </div>
+
+    <!-- Список посещений -->
+    <div class="attendance-list" th:if="${attendances != null and !attendances.isEmpty()}">
+        <div th:each="attendance : ${attendances}" class="attendance-item">
+            <div class="person-info">
+                <div class="person-avatar" th:if="${attendance.person.photoFilename != null and attendance.person.photoFilename != ''}">
+                    <img th:src="@{'/upload/faces/' + ${attendance.person.photoFilename} + ${personService.getPhotoExtension(attendance.person.photoFilename)}}" 
+                         th:alt="${attendance.person.firstName + ' ' + attendance.person.lastName}"
+                         onerror="this.style.display='none'; this.parentElement.innerHTML='${attendance.person.firstName.charAt(0)}';">
+                </div>
+                <div class="person-avatar" th:unless="${attendance.person.photoFilename != null and attendance.person.photoFilename != ''}" th:text="${attendance.person.firstName.charAt(0)}">A</div>
+                <div class="person-details">
+                    <h3 th:text="${attendance.person.middleName != null and attendance.person.middleName != '' ? (attendance.person.lastName != null and attendance.person.lastName != '' ? attendance.person.lastName + ' ' : '') + attendance.person.firstName + ' ' + attendance.person.middleName : attendance.person.firstName + (attendance.person.lastName != null and attendance.person.lastName != '' ? ' ' + attendance.person.lastName : '')}">Имя Фамилия</h3>
+                    <p th:text="${attendance.person.position}">Должность</p>
+                    <p class="person-group" th:text="'Группа: ' + ${attendance.person.group != null ? attendance.person.group : 'Не указана'}">Группа: 9-2-ПО-23</p>
+                </div>
+            </div>
+            <div class="attendance-meta">
+                <div class="timestamp" th:text="${#temporals.format(attendance.timestamp, 'HH:mm:ss')}">12:34:56</div>
+                <div class="event-type" 
+                     th:classappend="${attendance.eventType == 'DETECTED' ? 'event-detected' : (attendance.eventType == 'ENTER' ? 'event-enter' : 'event-leave')}"
+                     th:text="${attendance.eventType}">DETECTED</div>
+                <div class="session-info" th:text="${attendance.session != null ? attendance.session.name : 'Без мероприятия'}">Мероприятие</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Пустое состояние -->
+    <div class="attendance-list" th:if="${attendances == null or attendances.isEmpty()}">
+        <div class="empty-state">
+            <h3>📭 Нет записей посещений</h3>
+            <p>За выбранную дату не найдено записей о посещениях</p>
+        </div>
+    </div>
+</main>
+</body>
+</html>

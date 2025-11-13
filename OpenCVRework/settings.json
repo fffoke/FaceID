@@ -1,0 +1,7 @@
+{
+    "show_window": true,
+    "threshold": 0.6,
+    "gpu_enabled": true,
+    "camera_index": 0,
+    "min_frames_between_events": 3
+}
