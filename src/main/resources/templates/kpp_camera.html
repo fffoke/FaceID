@@ -215,9 +215,9 @@
             <span class="building-tag" th:if="${building != null and building != ''}" th:text="${building}">Корпус</span>
         </div>
 
-        <!-- Живое видео с распознаванием (если у камеры указан Stream URL) -->
-        <div class="video-card" th:if="${streamUrl != null and streamUrl != ''}">
-            <img th:src="${streamUrl}" alt="Видеопоток камеры" id="video-stream"
+        <!-- Живое видео с распознаванием (проксируется панелью, если у камеры указан Stream URL) -->
+        <div class="video-card" th:if="${hasStream}">
+            <img th:src="@{/kpp/stream/{n}(n=${cameraName})}" alt="Видеопоток камеры" id="video-stream"
                 onerror="this.style.display='none'; document.getElementById('video-offline').style.display='block';">
             <div class="video-offline" id="video-offline" style="display: none;">
                 Видеопоток недоступен — проверьте, что Python-клиент камеры запущен (stream_port в settings.json)
