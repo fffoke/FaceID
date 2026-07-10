@@ -25,6 +25,9 @@ public class Attendance {
 
     @Column(name = "timestamp")
     private LocalDateTime timestamp;
+
+    @Column(name = "camera_name")
+    private String cameraName;
     
     @Column(name = "event_type")
     private String eventType; // DETECTED / ENTER / LEAVE

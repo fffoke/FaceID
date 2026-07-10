@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS attendance (
     person_id BIGINT,
     session_id BIGINT,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    camera_name VARCHAR(255),
     event_type VARCHAR(50)
 );
 

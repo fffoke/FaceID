@@ -17,6 +17,10 @@ public class SessionService {
         return sessionRepository.findByActiveTrue();
     }
 
+    public Optional<Session> findById(Long id) {
+        return sessionRepository.findById(id);
+    }
+
     public Session startNewSession(String name) {
         // Завершаем старую, если есть
         sessionRepository.findByActiveTrue().ifPresent(s -> {

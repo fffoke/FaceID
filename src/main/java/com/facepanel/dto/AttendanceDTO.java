@@ -13,4 +13,5 @@ public class AttendanceDTO {
     private String personName;
     private LocalDateTime timestamp;
     private String eventType;
+    private String cameraName;
 }

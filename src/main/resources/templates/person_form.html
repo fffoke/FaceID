@@ -2,407 +2,249 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Добавить/Редактировать персону</title>
+    <title th:text="${person.id != null ? 'Редактировать персону' : 'Добавить персону'} + ' - FacePanel'">Персона</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- Общие стили -->
-    <link rel="stylesheet" href="/css/common.css">
-    
-    <style>
+    <script th:src="@{/js/sockjs.min.js}"></script>
+    <script th:src="@{/js/stomp.min.js}"></script>
 
-        .container {
+    <link rel="stylesheet" th:href="@{/css/common.css}">
+
+    <style>
+        .form-container {
             max-width: 600px;
             margin: 0 auto;
-        }
-
-        .card {
-            background: #1b1b1b;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 0 12px rgba(0, 0, 0, 0.4);
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: #fff;
-            font-weight: 600;
-        }
-
-        .form-group input[type="text"] {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #444;
-            border-radius: 8px;
-            background: #333;
-            color: #fff;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-
-        .form-group input[type="text"]:focus {
-            outline: none;
-            border-color: #4cd137;
-            box-shadow: 0 0 0 2px rgba(76, 209, 55, 0.2);
-        }
-
-        .form-group select {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #444;
-            border-radius: 8px;
-            background: #333;
-            color: #fff;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-
-        .form-group select:focus {
-            outline: none;
-            border-color: #4cd137;
-            box-shadow: 0 0 0 2px rgba(76, 209, 55, 0.2);
-        }
-
-        .form-group select option {
-            background: #333;
-            color: #fff;
-        }
-
-        .form-group .help-text {
-            color: #aaa;
-            font-size: 0.9em;
-            margin-top: 5px;
-        }
-
-        .form-actions {
-            display: flex;
-            gap: 15px;
-            margin-top: 30px;
-        }
-
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            text-decoration: none;
-            display: inline-block;
-            transition: all 0.3s ease;
-            font-size: 16px;
-        }
-
-        .btn-primary {
-            background: #4cd137;
-            color: #000;
-        }
-
-        .btn-primary:hover {
-            background: #44a03a;
-            color: #fff;
-        }
-
-        .btn-secondary {
-            background: #666;
-            color: #fff;
-        }
-
-        .btn-secondary:hover {
-            background: #555;
-        }
-
-        .required {
-            color: #ff4757;
         }
 
         .form-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 30px;
+            margin-bottom: 28px;
         }
+
+        .form-header h1 { margin-bottom: 0; }
 
         .back-link {
-            color: #4cd137;
-            text-decoration: none;
-            font-size: 0.9em;
+            color: var(--accent);
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: opacity var(--transition);
         }
 
-        .back-link:hover {
-            text-decoration: underline;
+        .back-link:hover { opacity: 0.7; }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 28px;
+        }
+
+        .error-message {
+            background: var(--danger-subtle);
+            color: var(--danger);
+            border: 1px solid var(--danger-border);
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            margin-bottom: 20px;
+            font-size: 0.9rem;
         }
 
         .image-preview {
-            margin-top: 15px;
-            padding: 15px;
-            background: #222;
-            border-radius: 8px;
-            border: 1px solid #444;
+            margin-top: 12px;
+            padding: 16px;
+            background: var(--bg-elevated);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
         }
 
         .image-preview img {
-            max-width: 200px;
-            max-height: 200px;
-            border-radius: 8px;
-            display: block;
+            max-width: 180px;
+            max-height: 180px;
+            border-radius: var(--radius-md);
             margin: 0 auto 10px;
         }
 
         .preview-info {
             text-align: center;
-            color: #aaa;
-            font-size: 0.9em;
+            color: var(--text-muted);
+            font-size: 0.85rem;
         }
 
-        .preview-info span {
-            display: block;
-            margin-bottom: 5px;
-        }
+        .preview-info span { display: block; margin-bottom: 4px; }
 
-        .current-image {
-            margin-top: 15px;
-        }
+        .current-image { margin-top: 12px; }
 
         .current-image label {
-            color: #4cd137;
-            font-weight: 600;
-            margin-bottom: 10px;
+            color: var(--accent);
+            font-weight: 500;
+            margin-bottom: 8px;
             display: block;
+            font-size: 0.85rem;
         }
 
         .current-image-container {
-            background: #222;
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #444;
+            background: var(--bg-elevated);
+            padding: 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
             text-align: center;
         }
 
         .current-image-container img {
-            max-width: 200px;
-            max-height: 200px;
-            border-radius: 8px;
-            margin-bottom: 10px;
+            max-width: 180px;
+            max-height: 180px;
+            border-radius: var(--radius-md);
+            margin: 0 auto 8px;
         }
 
         .current-image-info {
-            color: #aaa;
-            font-size: 0.9em;
-        }
-
-        input[type="file"] {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #444;
-            border-radius: 8px;
-            background: #333;
-            color: #fff;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-
-        input[type="file"]:focus {
-            outline: none;
-            border-color: #4cd137;
-            box-shadow: 0 0 0 2px rgba(76, 209, 55, 0.2);
+            color: var(--text-muted);
+            font-size: 0.85rem;
         }
     </style>
 </head>
 <body>
 
-<!-- Включаем общий хедер -->
 <div th:replace="~{fragments/header :: header}"></div>
 
-<!-- Основной контент -->
 <main class="main-content">
-    <div class="card">
-        <!-- Отображение ошибок -->
-        <div th:if="${param.error}" class="error-message" style="background: #ff4757; color: white; padding: 10px; border-radius: 6px; margin-bottom: 20px;">
-            <span th:switch="${param.error[0]}">
-                <span th:case="'invalid_file'">❌ Неверный тип файла. Разрешены только изображения (JPG, PNG, GIF)</span>
-                <span th:case="'save_failed'">❌ Ошибка при сохранении файла. Попробуйте еще раз</span>
-                <span th:case="'unknown_error'">❌ Произошла ошибка. Попробуйте еще раз</span>
-                <span th:case="*">❌ Произошла ошибка при обработке запроса</span>
-            </span>
-        </div>
-        
-        <div class="form-header">
-            <h1 th:text="${person.id != null ? 'Редактировать персону' : 'Добавить персону'}">
-                <span class="icon icon-large" th:classappend="${person.id != null ? 'icon-edit' : 'icon-add'}"></span>
-                <span th:text="${person.id != null ? 'Редактировать персону' : 'Добавить персону'}">Добавить персону</span>
-            </h1>
-            <a href="/persons" class="back-link">⬅ Назад к списку</a>
-        </div>
-
-        <form th:action="${person.id != null ? '/persons/update' : '/persons/save'}" 
-              th:object="${person}" 
-              method="post"
-              enctype="multipart/form-data">
-            
-            <input type="hidden" th:field="*{id}" th:if="${person.id != null}">
-            
-            <div class="form-group">
-                <label for="firstName">Имя <span class="required">*</span></label>
-                <input type="text" 
-                       id="firstName" 
-                       th:field="*{firstName}" 
-                       placeholder="Введите имя"
-                       required
-                       minlength="2"
-                       maxlength="50"
-                       pattern="[а-яА-Яa-zA-Z\s]+"
-                       title="Имя должно содержать только буквы и пробелы">
-                <div class="help-text">Имя персоны (обязательное поле, 2-50 символов)</div>
+    <div class="form-container">
+        <div class="card">
+            <!-- Ошибки -->
+            <div th:if="${param.error}" class="error-message">
+                <span th:switch="${param.error[0]}">
+                    <span th:case="'invalid_file'">Неверный тип файла. Разрешены только изображения (JPG, PNG, GIF)</span>
+                    <span th:case="'save_failed'">Ошибка при сохранении файла. Попробуйте еще раз</span>
+                    <span th:case="'unknown_error'">Произошла ошибка. Попробуйте еще раз</span>
+                    <span th:case="*">Произошла ошибка при обработке запроса</span>
+                </span>
             </div>
 
-            <div class="form-group">
-                <label for="lastName">Фамилия</label>
-                <input type="text" 
-                       id="lastName" 
-                       th:field="*{lastName}" 
-                       placeholder="Введите фамилию"
-                       maxlength="50"
-                       pattern="[а-яА-Яa-zA-Z\s]*"
-                       title="Фамилия должна содержать только буквы и пробелы">
-                <div class="help-text">Фамилия персоны (необязательное поле, до 50 символов)</div>
+            <div class="form-header">
+                <h1 th:text="${person.id != null ? 'Редактировать персону' : 'Добавить персону'}">Добавить персону</h1>
+                <a href="/persons" class="back-link">&larr; К списку</a>
             </div>
 
-            <div class="form-group">
-                <label for="middleName">Отчество</label>
-                <input type="text" 
-                       id="middleName" 
-                       th:field="*{middleName}" 
-                       placeholder="Введите отчество"
-                       maxlength="50"
-                       pattern="[а-яА-Яa-zA-Z\s]*"
-                       title="Отчество должно содержать только буквы и пробелы">
-                <div class="help-text">Отчество персоны (необязательное поле, до 50 символов)</div>
-            </div>
+            <form th:action="${person.id != null ? '/persons/update' : '/persons/save'}"
+                  th:object="${person}"
+                  method="post"
+                  enctype="multipart/form-data">
 
-            <div class="form-group">
-                <label for="position">Должность <span class="required">*</span></label>
-                <select id="position" 
-                        th:field="*{position}" 
-                        required>
-                    <option value="">Выберите должность</option>
-                    <option value="Student">Студент</option>
-                    <option value="Employee">Сотрудник</option>
-                </select>
-                <div class="help-text">Выберите должность персоны</div>
-            </div>
+                <input type="hidden" th:field="*{id}" th:if="${person.id != null}">
 
-            <div class="form-group">
-                <label for="group">Группа/Кафедра <span class="required">*</span></label>
-                <input type="text" 
-                       id="group" 
-                       th:field="*{group}" 
-                       placeholder="Введите группу или кафедру"
-                       required>
-                <div class="help-text">
-                    Для студентов: номер группы (например: 9-2-ПО-23)<br>
-                    Для сотрудников: название кафедры (например: Информационная кафедра)
+                <div class="form-group">
+                    <label for="firstName">Имя <span class="required">*</span></label>
+                    <input type="text" id="firstName" th:field="*{firstName}"
+                           placeholder="Введите имя" required minlength="2" maxlength="50"
+                           pattern="[а-яА-Яa-zA-ZёЁ\s]+" title="Только буквы и пробелы">
+                    <div class="help-text">Обязательное поле, 2-50 символов</div>
                 </div>
-            </div>
 
-            <div class="form-group">
-                <label for="photoFile">Фото лица <span class="required">*</span></label>
-                <input type="file" 
-                       id="photoFile" 
-                       name="photoFile"
-                       accept="image/*"
-                       onchange="previewImage(this)"
-                       th:required="${person.id == null}">
-                <div class="help-text">
-                    Загрузите изображение лица (JPG, PNG, GIF). 
-                    Рекомендуется квадратное изображение размером 200x200 пикселей.
+                <div class="form-group">
+                    <label for="lastName">Фамилия <span class="required">*</span></label>
+                    <input type="text" id="lastName" th:field="*{lastName}"
+                           placeholder="Введите фамилию" required minlength="2" maxlength="50"
+                           pattern="[а-яА-ЯёЁa-zA-Z\-]+" title="Только буквы и дефис">
+                    <div class="help-text">Обязательное поле</div>
                 </div>
-                
-                <!-- Превью изображения -->
-                <div id="imagePreview" class="image-preview" style="display: none;">
-                    <img id="previewImg" src="" alt="Превью изображения">
-                    <div class="preview-info">
-                        <span id="fileName"></span>
-                        <span id="fileSize"></span>
+
+                <div class="form-group">
+                    <label for="middleName">Отчество <span style="color:var(--text-muted);font-weight:400;">(необязательно)</span></label>
+                    <input type="text" id="middleName" th:field="*{middleName}"
+                           placeholder="Введите отчество" maxlength="50"
+                           pattern="[а-яА-ЯёЁa-zA-Z\-]*" title="Только буквы и дефис">
+                </div>
+
+                <div class="form-group">
+                    <label for="position">Должность <span class="required">*</span></label>
+                    <select id="position" th:field="*{position}" required>
+                        <option value="">Выберите должность</option>
+                        <option value="Student">Студент</option>
+                        <option value="Employee">Сотрудник</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="group">Группа/Кафедра <span class="required">*</span></label>
+                    <input type="text" id="group" th:field="*{group}"
+                           placeholder="Введите группу или кафедру" required>
+                    <div class="help-text">
+                        Студенты: номер группы (9-2-ПО-23) &middot; Сотрудники: кафедра
                     </div>
                 </div>
-                
-                <!-- Текущее изображение (при редактировании) -->
-                <div th:if="${person.photoFilename != null and person.photoFilename != ''}" class="current-image">
-                    <label>Текущее изображение:</label>
-                    <div class="current-image-container">
-                        <img th:src="@{'/faces/' + ${person.photoFilename} + '.jpg'}" 
-                             th:alt="${person.firstName + ' ' + person.lastName}"
-                             onerror="this.style.display='none'">
-                        <div class="current-image-info">
-                            <span th:text="${person.photoFilename} + '.jpg'">filename.jpg</span>
+
+                <div class="form-group">
+                    <label for="photoFile">Фото лица <span class="required">*</span></label>
+                    <input type="file" id="photoFile" name="photoFile"
+                           accept="image/*" onchange="previewImage(this)"
+                           th:required="${person.id == null}">
+                    <div class="help-text">JPG, PNG, GIF. Рекомендуется 200x200px</div>
+
+                    <div id="imagePreview" class="image-preview" style="display: none;">
+                        <img id="previewImg" src="" alt="Превью">
+                        <div class="preview-info">
+                            <span id="fileName"></span>
+                            <span id="fileSize"></span>
+                        </div>
+                    </div>
+
+                    <div th:if="${person.photoFilename != null and person.photoFilename != ''}" class="current-image">
+                        <label>Текущее фото:</label>
+                        <div class="current-image-container">
+                            <img th:src="@{'/upload/faces/' + ${person.photoFilename} + ${personService.getPhotoExtension(person.photoFilename)}}"
+                                 th:alt="${person.firstName + ' ' + person.lastName}"
+                                 onerror="this.style.display='none'">
+                            <div class="current-image-info" th:text="${person.photoFilename} + ${personService.getPhotoExtension(person.photoFilename)}">filename.jpg</div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="form-group" th:if="${person.id != null}">
-                <label>Дата создания</label>
-                <input type="text" 
-                       th:value="${#temporals.format(person.createdAt, 'dd.MM.yyyy HH:mm:ss')}" 
-                       readonly
-                       style="background: #222; color: #aaa;">
-                <div class="help-text">Дата автоматически устанавливается при создании</div>
-            </div>
+                <div class="form-group" th:if="${person.id != null}">
+                    <label>Дата создания</label>
+                    <input type="text"
+                           th:value="${#temporals.format(person.createdAt, 'dd.MM.yyyy HH:mm:ss')}"
+                           readonly style="opacity: 0.6; cursor: default;">
+                </div>
 
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary">
-                    <span class="icon icon-save icon-small"></span>
-                    <span th:text="${person.id != null ? 'Сохранить изменения' : 'Добавить персону'}">Добавить персону</span>
-                </button>
-                <a href="/persons" class="btn btn-secondary">
-                    <span class="icon icon-cancel icon-small"></span>
-                    Отмена
-                </a>
-            </div>
-        </form>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <span th:text="${person.id != null ? 'Сохранить' : 'Добавить'}">Добавить</span>
+                    </button>
+                    <a href="/persons" class="btn btn-secondary">Отмена</a>
+                </div>
+            </form>
+        </div>
     </div>
 </main>
 
 <script>
     function previewImage(input) {
-        console.log('previewImage called');
         const preview = document.getElementById('imagePreview');
         const previewImg = document.getElementById('previewImg');
         const fileName = document.getElementById('fileName');
         const fileSize = document.getElementById('fileSize');
-        
-        console.log('Elements found:', {preview, previewImg, fileName, fileSize});
-        
+
         if (input.files && input.files[0]) {
             const file = input.files[0];
-            console.log('File selected:', file.name, file.size);
             const reader = new FileReader();
-            
             reader.onload = function(e) {
-                console.log('File loaded, setting preview');
-                if (previewImg) previewImg.src = e.target.result;
-                if (fileName) fileName.textContent = 'Файл: ' + file.name;
-                if (fileSize) fileSize.textContent = 'Размер: ' + formatFileSize(file.size);
-                if (preview) preview.style.display = 'block';
+                previewImg.src = e.target.result;
+                fileName.textContent = file.name;
+                fileSize.textContent = formatFileSize(file.size);
+                preview.style.display = 'block';
             };
-            
             reader.readAsDataURL(file);
         } else {
-            console.log('No file selected, hiding preview');
-            if (preview) preview.style.display = 'none';
+            preview.style.display = 'none';
         }
     }
-    
+
     function formatFileSize(bytes) {
-        if (bytes === 0) return '0 Bytes';
+        if (bytes === 0) return '0 B';
         const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const sizes = ['B', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     }
 </script>
 

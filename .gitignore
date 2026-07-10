@@ -1,44 +1,53 @@
-# IDE и системные файлы
-.idea/
-.vscode/
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
 *.iml
 *.ipr
-*.iws
 
-# Java/Maven
-target/
-!.mvn/wrapper/maven-wrapper.properties
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.whl
+### VS Code ###
+.vscode/
 
-# Исключить модели и веса
-/OpenCVRework/models/
-/OpenCVRework/*.onnx
-/OpenCVRework/*.whl
-/OpenCVRework/*.pt
-/OpenCVRework/*.pth
-/OpenCVRework/*.bin
-/OpenCVRework/*.tflite
-/OpenCVRework/*.ckpt
-/OpenCVRework/*.weights
-
-# Исключить лица
-/faces/
-
-# Прочее
-*.log
-*.tmp
-*.bak
+### macOS ###
 .DS_Store
 
-# Разрешённые файлы
-!.gitignore
-!pom.xml
-!requirements.txt
-!src/
-!README.md
+### Python ###
+__pycache__/
+OpenCVRework/venv/
+*.pyc
+
+### Большие бинарники (лимит GitHub 100 МБ) ###
+*.whl
+OpenCVRework/*.jar
+
+### Фото людей — биометрические данные, не для репозитория ###
+faces/
+
+### Локальное ###
+.playwright-mcp/
+.claude/
+*.log

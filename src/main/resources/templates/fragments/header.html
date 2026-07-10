@@ -2,34 +2,37 @@
 <header class="header" th:fragment="header">
     <div class="header-content">
         <a href="/" class="logo">
-            📊 FacePanel
+            <span class="logo-icon">FP</span>
+            <span>FacePanel</span>
         </a>
-        
-        <nav class="nav-menu">
-            <a href="/" class="nav-button">
-                <span class="icon icon-home"></span>
-                Главная
-            </a>
-            <a href="/persons" class="nav-button">
-                <span class="icon icon-persons"></span>
-                Персоны
-            </a>
-            <a href="/session" class="nav-button">
-                <span class="icon icon-sessions"></span>
-                Мероприятия
-            </a>
-            <a href="/attendance" class="nav-button">
-                <span class="icon icon-history"></span>
-                История
-            </a>
-            <a href="/statistics" class="nav-button">
-                <span class="icon icon-stats"></span>
-                Статистика
-            </a>
+
+        <nav class="nav-menu" id="nav-menu">
+            <a href="/" class="nav-button" data-path="/">Главная</a>
+            <a href="/persons" class="nav-button" data-path="/persons">Персоны</a>
+            <a href="/session" class="nav-button" data-path="/session">Мероприятия</a>
+            <a href="/attendance" class="nav-button" data-path="/attendance">История</a>
+            <a href="/statistics" class="nav-button" data-path="/statistics">Статистика</a>
+            <a href="/cameras" class="nav-button" data-path="/cameras">Камеры</a>
+            <a href="/kpp" class="nav-button nav-button-kpp" data-path="/kpp">КПП</a>
         </nav>
-        
+
         <div id="connection-status" class="connection-status disconnected">
-            🔴 Отключено
+            <span>Отключено</span>
         </div>
     </div>
+
+    <script>
+        (function() {
+            var path = window.location.pathname;
+            var links = document.querySelectorAll('#nav-menu .nav-button');
+            links.forEach(function(link) {
+                var dp = link.getAttribute('data-path');
+                if (dp === '/' && path === '/') {
+                    link.classList.add('active');
+                } else if (dp !== '/' && path.indexOf(dp) === 0) {
+                    link.classList.add('active');
+                }
+            });
+        })();
+    </script>
 </header>

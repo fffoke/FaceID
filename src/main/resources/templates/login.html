@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lahmut Group — Вход</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --gold:        #C9A96E;
+            --gold-light:  #E8D5A3;
+            --gold-dim:    #8A6E42;
+            --gold-subtle: rgba(201, 169, 110, 0.12);
+            --gold-border: rgba(201, 169, 110, 0.35);
+            --bg:          #0D0905;
+            --bg-card:     rgba(22, 13, 7, 0.92);
+            --text:        #F0E2C8;
+            --text-muted:  #9A856A;
+            --danger:      #d97060;
+            --success:     #7ab87a;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+        }
+
+        /* ── Фон с частицами ── */
+        #canvas-bg {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+        }
+
+        /* ── Блюр-оверлей ── */
+        .backdrop {
+            position: fixed;
+            inset: 0;
+            backdrop-filter: blur(0px);
+            background: radial-gradient(ellipse at center, rgba(13,9,5,0.25) 0%, rgba(13,9,5,0.55) 100%);
+            z-index: 1;
+        }
+
+        /* ── Центральная карточка ── */
+        .login-wrapper {
+            position: relative;
+            z-index: 10;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .login-card {
+            background: var(--bg-card);
+            border: 1px solid var(--gold-border);
+            border-radius: 20px;
+            padding: 48px 44px 40px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow:
+                0 0 0 1px rgba(201,169,110,0.08),
+                0 24px 64px rgba(0,0,0,0.7),
+                0 0 80px rgba(201,169,110,0.06);
+            animation: cardIn 0.6s cubic-bezier(.22,1,.36,1) both;
+        }
+
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(32px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0)     scale(1);    }
+        }
+
+        /* ── Логотип (SVG) ── */
+        .logo-wrap {
+            text-align: center;
+            margin-bottom: 32px;
+            animation: logoIn 0.8s cubic-bezier(.22,1,.36,1) 0.1s both;
+        }
+
+        @keyframes logoIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to   { opacity: 1; transform: scale(1);   }
+        }
+
+        .logo-img {
+            width: 150px;
+            height: 150px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 18px rgba(201,169,110,0.4)) brightness(1.1);
+        }
+
+        .brand-name {
+            font-size: 1.55rem;
+            font-weight: 700;
+            letter-spacing: 0.22em;
+            color: var(--gold-light);
+            margin-top: 12px;
+            text-transform: uppercase;
+        }
+
+        .brand-sub {
+            font-size: 0.72rem;
+            letter-spacing: 0.35em;
+            color: var(--gold-dim);
+            text-transform: uppercase;
+            margin-top: 3px;
+        }
+
+        /* ── Разделитель ── */
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--gold-border);
+        }
+        .divider-text {
+            font-size: 0.7rem;
+            letter-spacing: 0.2em;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        /* ── Форма ── */
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            color: var(--gold-dim);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--gold-border);
+            border-radius: 10px;
+            padding: 13px 16px;
+            font-size: 0.95rem;
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+        }
+
+        .form-input::placeholder { color: var(--text-muted); }
+
+        .form-input:focus {
+            border-color: var(--gold);
+            background: rgba(201,169,110,0.06);
+            box-shadow: 0 0 0 3px rgba(201,169,110,0.12);
+        }
+
+        /* ── Ошибка / Успех ── */
+        .alert {
+            border-radius: 10px;
+            padding: 11px 14px;
+            font-size: 0.85rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .alert-error {
+            background: rgba(217,112,96,0.12);
+            border: 1px solid rgba(217,112,96,0.35);
+            color: var(--danger);
+        }
+
+        .alert-success {
+            background: rgba(122,184,122,0.1);
+            border: 1px solid rgba(122,184,122,0.3);
+            color: var(--success);
+        }
+
+        /* ── Кнопка ── */
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #C9A96E 0%, #A0773A 100%);
+            color: #0D0905;
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+            box-shadow: 0 4px 20px rgba(201,169,110,0.25);
+        }
+
+        .btn-login:hover {
+            opacity: 0.92;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 28px rgba(201,169,110,0.35);
+        }
+
+        .btn-login:active { transform: translateY(0); }
+
+        /* ── Подвал ── */
+        .login-footer {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+        }
+
+        /* ── Летающие эмодзи ── */
+        .emoji-particle {
+            position: fixed;
+            font-size: 28px;
+            z-index: 0;
+            pointer-events: none;
+            user-select: none;
+            will-change: transform;
+            filter: blur(0.3px);
+            opacity: 0.55;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="canvas-bg"></canvas>
+<div class="backdrop"></div>
+
+<!-- Летающие эмодзи -->
+<div id="particles"></div>
+
+<div class="login-wrapper">
+    <div class="login-card">
+
+        <!-- Логотип -->
+        <div class="logo-wrap">
+            <img class="logo-img" th:src="@{/img/logo.png}" src="/img/logo.png" alt="Lahmut Group">
+
+            <div class="brand-name">Lahmut Group</div>
+            <div class="brand-sub">Face Recognition System</div>
+        </div>
+
+        <div class="divider"><span class="divider-text">Авторизация</span></div>
+
+        <!-- Сообщения -->
+        <div th:if="${param.error}" class="alert alert-error">
+            <span>⚠</span> Неверный логин или пароль
+        </div>
+        <div th:if="${param.logout}" class="alert alert-success">
+            <span>✓</span> Вы вышли из системы
+        </div>
+
+        <!-- Форма -->
+        <form th:action="@{/login}" method="post">
+            <div class="form-group">
+                <label class="form-label" for="username">Логин</label>
+                <input class="form-input" type="text" id="username" name="username"
+                       placeholder="Введите логин" autocomplete="username" autofocus>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="password">Пароль</label>
+                <input class="form-input" type="password" id="password" name="password"
+                       placeholder="Введите пароль" autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn-login">Войти</button>
+        </form>
+
+        <div class="login-footer">
+            &copy; 2025 Lahmut Group &nbsp;&middot;&nbsp; Face Panel v1.0
+        </div>
+    </div>
+</div>
+
+<script>
+    /* ── Звёздный/пыльный фон на canvas ── */
+    (function () {
+        const canvas = document.getElementById('canvas-bg');
+        const ctx    = canvas.getContext('2d');
+        let W, H, stars = [];
+
+        function resize() {
+            W = canvas.width  = window.innerWidth;
+            H = canvas.height = window.innerHeight;
+        }
+
+        function initStars() {
+            stars = Array.from({ length: 120 }, () => ({
+                x: Math.random() * W,
+                y: Math.random() * H,
+                r: Math.random() * 1.4 + 0.2,
+                a: Math.random(),
+                da: (Math.random() - 0.5) * 0.006
+            }));
+        }
+
+        function drawStars() {
+            ctx.clearRect(0, 0, W, H);
+            for (const s of stars) {
+                s.a = Math.max(0.05, Math.min(1, s.a + s.da));
+                if (s.a <= 0.05 || s.a >= 1) s.da *= -1;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(201,169,110,${s.a * 0.6})`;
+                ctx.fill();
+            }
+            requestAnimationFrame(drawStars);
+        }
+
+        resize();
+        initStars();
+        drawStars();
+        window.addEventListener('resize', () => { resize(); initStars(); });
+    })();
+
+    /* ── Летающие эмодзи-частицы ── */
+    (function () {
+        const EMOJIS = ['💻','📷','📹','🎥','📡','🖥️','📸'];
+        const COUNT  = 18;
+        const container = document.getElementById('particles');
+        const particles = [];
+
+        for (let i = 0; i < COUNT; i++) {
+            const el = document.createElement('div');
+            el.className = 'emoji-particle';
+            el.textContent = EMOJIS[i % EMOJIS.length];
+
+            const size = 22 + Math.random() * 20;
+            el.style.fontSize = size + 'px';
+            el.style.opacity  = (0.25 + Math.random() * 0.35).toFixed(2);
+
+            const p = {
+                el,
+                x:  Math.random() * window.innerWidth,
+                y:  Math.random() * window.innerHeight,
+                vx: (Math.random() - 0.5) * 1.8,
+                vy: (Math.random() - 0.5) * 1.8,
+                w:  size * 1.4,
+                h:  size * 1.4,
+                rot:    Math.random() * 360,
+                rotSpd: (Math.random() - 0.5) * 1.5
+            };
+
+            container.appendChild(el);
+            particles.push(p);
+        }
+
+        function tick() {
+            const W = window.innerWidth;
+            const H = window.innerHeight;
+
+            for (const p of particles) {
+                p.x   += p.vx;
+                p.y   += p.vy;
+                p.rot += p.rotSpd;
+
+                if (p.x < 0)        { p.x = 0;      p.vx *= -1; }
+                if (p.x > W - p.w)  { p.x = W-p.w;  p.vx *= -1; }
+                if (p.y < 0)        { p.y = 0;       p.vy *= -1; }
+                if (p.y > H - p.h)  { p.y = H-p.h;  p.vy *= -1; }
+
+                p.el.style.transform = `translate(${p.x}px,${p.y}px) rotate(${p.rot}deg)`;
+            }
+            requestAnimationFrame(tick);
+        }
+        tick();
+    })();
+
+    /* ── Enter отправляет форму ── */
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.querySelector('form').submit();
+    });
+</script>
+</body>
+</html>

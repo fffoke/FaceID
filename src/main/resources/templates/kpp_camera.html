@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title th:text="'КПП ' + ${cameraName} + ' — FacePanel'">КПП — FacePanel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script th:src="@{/js/sockjs.min.js}"></script>
+    <script th:src="@{/js/stomp.min.js}"></script>
+
+    <link rel="stylesheet" th:href="@{/css/common.css}">
+
+    <style>
+        body {
+            background: radial-gradient(ellipse at top, #0f1624 0%, var(--bg-primary) 60%);
+        }
+
+        .kpp-wrapper {
+            max-width: 900px;
+            margin: 24px auto 48px;
+            padding: 0 16px;
+        }
+
+        .kpp-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--accent);
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: opacity var(--transition);
+        }
+
+        .back-link:hover { opacity: 0.7; }
+
+        .building-tag {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--accent-light);
+            background: var(--accent-subtle);
+            border: 1px solid var(--accent-border);
+            padding: 4px 12px;
+            border-radius: var(--radius-pill);
+        }
+
+        .status-card {
+            border-radius: var(--radius-xl);
+            padding: 40px 28px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-lg);
+            text-align: center;
+            min-height: 50vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .status-label {
+            font-size: 0.8rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 24px;
+            font-weight: 600;
+        }
+
+        .status-main {
+            border-radius: var(--radius-lg);
+            padding: 48px 24px;
+            transition: all 0.3s ease;
+        }
+
+        .status-main.idle {
+            background: rgba(100, 116, 139, 0.08);
+            border: 1px solid rgba(100, 116, 139, 0.2);
+        }
+
+        .status-main.active {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.5);
+            box-shadow: 0 0 40px rgba(16, 185, 129, 0.15), inset 0 0 0 1px rgba(16, 185, 129, 0.2);
+        }
+
+        .status-title {
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin-bottom: 12px;
+            letter-spacing: -0.02em;
+        }
+
+        .status-title.idle { color: var(--text-secondary); }
+        .status-title.active { color: #ecfdf5; }
+
+        .status-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+        }
+
+        .status-subtitle span {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .status-meta {
+            margin-top: 28px;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+
+        .status-meta strong { color: var(--text-secondary); }
+
+        /* Видеопоток с камеры */
+        .video-card {
+            margin-bottom: 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 16px;
+            text-align: center;
+        }
+
+        .video-card img {
+            width: 100%;
+            max-width: 860px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            background: #000;
+            min-height: 200px;
+        }
+
+        .video-offline {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            padding: 24px;
+        }
+
+        /* Лента последних распознаваний */
+        .feed-card {
+            margin-top: 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 20px;
+        }
+
+        .feed-card h3 {
+            margin: 0 0 12px;
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+        }
+
+        .cam-feed {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .feed-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 10px 14px;
+            font-size: 0.9rem;
+        }
+
+        .feed-name {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .feed-time {
+            color: var(--accent-light);
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.82rem;
+        }
+
+        .feed-empty {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            text-align: center;
+            padding: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .status-card { min-height: 45vh; padding: 28px 16px; }
+            .status-main { padding: 36px 16px; }
+            .status-title { font-size: 1.8rem; }
+            .status-subtitle { font-size: 1rem; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="kpp-wrapper">
+        <div class="kpp-top">
+            <a href="/kpp" class="back-link">&larr; Все КПП</a>
+            <span class="building-tag" th:if="${building != null and building != ''}" th:text="${building}">Корпус</span>
+        </div>
+
+        <!-- Живое видео с распознаванием (если у камеры указан Stream URL) -->
+        <div class="video-card" th:if="${streamUrl != null and streamUrl != ''}">
+            <img th:src="${streamUrl}" alt="Видеопоток камеры" id="video-stream"
+                onerror="this.style.display='none'; document.getElementById('video-offline').style.display='block';">
+            <div class="video-offline" id="video-offline" style="display: none;">
+                Видеопоток недоступен — проверьте, что Python-клиент камеры запущен (stream_port в settings.json)
+            </div>
+        </div>
+
+        <div class="status-card">
+            <div class="status-label">Статус распознавания &mdash; <span th:text="${cameraName}">KPP1</span></div>
+
+            <div id="status-main" class="status-main idle">
+                <div id="status-title" class="status-title idle">
+                    Нет лица для определения
+                </div>
+                <div id="status-subtitle" class="status-subtitle">
+                    Ожидание появления лица в зоне камеры
+                </div>
+            </div>
+
+            <div class="status-meta">
+                Камера: <strong th:text="${cameraName}">KPP1</strong> &middot; Обновление: <span id="status-time">&mdash;</span>
+            </div>
+        </div>
+
+        <div class="feed-card">
+            <h3>Последние распознавания</h3>
+            <div class="cam-feed" id="cam-feed">
+                <div class="feed-empty">Пока нет распознаваний</div>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        const CAMERA_NAME = /*[[${cameraName}]]*/ 'KPP1';
+        const STATUS_TIMEOUT_MS = 2000;
+        const MAX_FEED_ITEMS = 20;
+
+        let resetTimer = null;
+
+        const statusMainEl = document.getElementById('status-main');
+        const statusTitleEl = document.getElementById('status-title');
+        const statusSubtitleEl = document.getElementById('status-subtitle');
+        const statusTimeEl = document.getElementById('status-time');
+        const feedEl = document.getElementById('cam-feed');
+
+        function setIdleStatus() {
+            statusMainEl.className = 'status-main idle';
+            statusTitleEl.className = 'status-title idle';
+            statusTitleEl.textContent = 'Нет лица для определения';
+            statusSubtitleEl.textContent = 'Ожидание появления лица в зоне камеры';
+        }
+
+        function setActiveStatus(personName, timeStr) {
+            statusMainEl.className = 'status-main active';
+            statusTitleEl.className = 'status-title active';
+            statusTitleEl.textContent = 'Определён: ' + personName;
+            statusSubtitleEl.innerHTML = '';
+            const label = document.createTextNode('Доступ разрешён: ');
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = personName;
+            statusSubtitleEl.appendChild(label);
+            statusSubtitleEl.appendChild(nameSpan);
+            statusTimeEl.textContent = timeStr;
+        }
+
+        function addFeedItem(personName, timeStr) {
+            const empty = feedEl.querySelector('.feed-empty');
+            if (empty) empty.remove();
+
+            const item = document.createElement('div');
+            item.className = 'feed-item';
+            const nameEl = document.createElement('span');
+            nameEl.className = 'feed-name';
+            nameEl.textContent = personName;
+            const timeEl = document.createElement('span');
+            timeEl.className = 'feed-time';
+            timeEl.textContent = timeStr;
+            item.appendChild(nameEl);
+            item.appendChild(timeEl);
+            feedEl.prepend(item);
+
+            while (feedEl.children.length > MAX_FEED_ITEMS) {
+                feedEl.removeChild(feedEl.lastChild);
+            }
+        }
+
+        function connectWs() {
+            const socket = new SockJS('/ws');
+            const stompClient = Stomp.over(socket);
+            stompClient.debug = null;
+
+            stompClient.connect({}, function () {
+                stompClient.subscribe('/topic/attendance', function (message) {
+                    try {
+                        const data = JSON.parse(message.body);
+                        if (!data.cameraName || data.cameraName !== CAMERA_NAME) return;
+
+                        const personName = data.personName && data.personName.trim() !== '' ? data.personName : 'Неизвестный';
+                        const time = new Date(data.timestamp || Date.now());
+                        const timeStr = time.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                        setActiveStatus(personName, timeStr);
+                        addFeedItem(personName, timeStr);
+
+                        if (resetTimer) clearTimeout(resetTimer);
+                        resetTimer = setTimeout(setIdleStatus, STATUS_TIMEOUT_MS);
+                    } catch (e) { console.error('Bad message', e); }
+                });
+            }, function () { setTimeout(connectWs, 3000); });
+        }
+
+        setIdleStatus();
+        connectWs();
+    </script>
+
+</body>
+
+</html>

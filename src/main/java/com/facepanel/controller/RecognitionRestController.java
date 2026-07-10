@@ -46,13 +46,17 @@ public class RecognitionRestController {
                     .orElse(null);
         }
 
-        Attendance saved = attendanceService.registerDetection(nameToUse, "DETECTED", sessionId, req.getConfidence());
+        Attendance saved = attendanceService.registerDetection(nameToUse, "DETECTED", sessionId, req.getConfidence(), req.getCameraName());
+        if (saved == null) {
+            return ResponseEntity.badRequest().body("person not found for provided name");
+        }
         AttendanceDTO dto = AttendanceDTO.builder()
                 .id(saved.getId())
                 .personId(saved.getPerson() != null ? saved.getPerson().getId() : null)
                 .personName(saved.getPerson() != null ? (saved.getPerson().getFirstName() + (saved.getPerson().getLastName() != null ? " " + saved.getPerson().getLastName() : "")) : nameToUse)
                 .timestamp(saved.getTimestamp())
                 .eventType(saved.getEventType())
+                .cameraName(saved.getCameraName())
                 .build();
 
         return ResponseEntity.ok(dto);

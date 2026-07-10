@@ -10,4 +10,5 @@ public class RecognitionRequest {
     private Double confidence;
     private String timestamp; // optional ISO string
     private Long sessionId; // optional
+    private String cameraName; // optional идентификатор камеры (например KPP1)
 }

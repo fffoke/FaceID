@@ -10,6 +10,7 @@ import java.util.List;
 
 public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     List<Attendance> findBySessionId(Long sessionId);
+    List<Attendance> findByPersonId(Long personId);
     List<Attendance> findByTimestampBetween(LocalDateTime start, LocalDateTime end);
     
     @Query("SELECT a FROM Attendance a WHERE a.session.id = :sessionId ORDER BY a.timestamp DESC")

@@ -27,7 +27,7 @@ public class AttendanceService {
      * Сохранить факт распознавания.
      * Возвращает сохранённую запись.
      */
-    public Attendance registerDetection(String name, String eventType, Long sessionId, Double confidence) {
+    public Attendance registerDetection(String name, String eventType, Long sessionId, Double confidence, String cameraName) {
         System.out.println("🔍 Registering detection for: " + name + ", sessionId: " + sessionId);
         
         // find Person by photoFilename (name from Python is filename without extension)
@@ -63,6 +63,14 @@ public class AttendanceService {
             }
         }
 
+        // Если мероприятие привязано к конкретной камере — события с других камер не попадают в него
+        if (session != null && session.getCameraName() != null && !session.getCameraName().isBlank()
+                && !session.getCameraName().equalsIgnoreCase(cameraName)) {
+            System.out.println("📷 Camera '" + cameraName + "' не привязана к мероприятию '" + session.getName()
+                    + "' (ожидается '" + session.getCameraName() + "') — запись без мероприятия");
+            session = null;
+        }
+
         // Debounce: если у этого пользователя уже есть запись в последние X секунд — можно опционально игнорировать.
         // (Для простоты здесь не игнорируем; при необходимости добавим проверку.)
 
@@ -71,6 +79,7 @@ public class AttendanceService {
                 .session(session)
                 .timestamp(LocalDateTime.now())
                 .eventType(eventType)
+                .cameraName(cameraName)
                 .build();
 
         Attendance saved = attendanceRepository.save(att);
@@ -88,6 +97,7 @@ public class AttendanceService {
         payload.put("eventType", saved.getEventType());
         payload.put("sessionId", session != null ? session.getId() : null);
         payload.put("sessionName", session != null ? session.getName() : "Без мероприятия");
+        payload.put("cameraName", saved.getCameraName());
 
 
         // broadcast to topic
@@ -123,6 +133,7 @@ public class AttendanceService {
         // keep latest per person
         Map<Long, Attendance> latest = new HashMap<>();
         for (Attendance a : list) {
+            if (a.getPerson() == null) continue;
             Long pid = a.getPerson().getId();
             if (!latest.containsKey(pid) || a.getTimestamp().isAfter(latest.get(pid).getTimestamp())) {
                 latest.put(pid, a);
@@ -138,6 +149,7 @@ public class AttendanceService {
     public Map<Long, Boolean> getAttendanceStatusForSession(Long sessionId) {
         List<Attendance> sessionAttendances = attendanceRepository.findBySessionId(sessionId);
         return sessionAttendances.stream()
+                .filter(a -> a.getPerson() != null)
                 .collect(Collectors.toMap(
                     a -> a.getPerson().getId(),
                     a -> true,
@@ -151,6 +163,7 @@ public class AttendanceService {
     public Map<Long, LocalDateTime> getAttendanceTimesForSession(Long sessionId) {
         List<Attendance> sessionAttendances = attendanceRepository.findBySessionId(sessionId);
         return sessionAttendances.stream()
+                .filter(a -> a.getPerson() != null)
                 .collect(Collectors.toMap(
                     a -> a.getPerson().getId(),
                     a -> a.getTimestamp(),

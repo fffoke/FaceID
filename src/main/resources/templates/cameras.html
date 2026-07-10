@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Камеры - FacePanel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" th:href="@{/css/common.css}">
+
+    <style>
+        .add-form {
+            background: var(--bg-elevated);
+            padding: 16px 20px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .add-form h2 {
+            margin: 0 0 14px;
+            font-size: 1.05rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .form-grid label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+
+        .form-grid input {
+            width: 100%;
+        }
+
+        .camera-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            background: var(--bg-elevated);
+            padding: 14px 20px;
+            border-radius: var(--radius-md);
+            margin-bottom: 8px;
+            border: 1px solid var(--border);
+            transition: border-color var(--transition);
+        }
+
+        .camera-item:hover {
+            border-color: var(--border-hover);
+        }
+
+        .camera-info {
+            min-width: 0;
+        }
+
+        .camera-info h3 {
+            margin: 0 0 4px;
+            color: var(--text-primary);
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .building-tag {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--accent-light);
+            background: var(--accent-subtle);
+            border: 1px solid var(--accent-border);
+            padding: 3px 10px;
+            border-radius: var(--radius-pill);
+        }
+
+        .camera-urls {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            word-break: break-all;
+        }
+
+        .camera-urls span {
+            color: var(--text-dim);
+            font-family: inherit;
+        }
+
+        .error-banner {
+            background: var(--danger-subtle);
+            border: 1px solid var(--danger-border);
+            color: var(--danger);
+            padding: 10px 16px;
+            border-radius: var(--radius-md);
+            margin-bottom: 16px;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .camera-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div th:replace="~{fragments/header :: header}"></div>
+
+    <main class="main-content">
+        <div class="card">
+            <h1>Камеры</h1>
+
+            <div class="error-banner" th:if="${param.error}">
+                Камера с таким названием уже существует (или название пустое)
+            </div>
+
+            <!-- Добавление камеры -->
+            <div class="add-form">
+                <h2>Добавить камеру</h2>
+                <form method="post" th:action="@{/cameras/add}">
+                    <div class="form-grid">
+                        <div>
+                            <label for="name">Название камеры *</label>
+                            <input type="text" id="name" name="name" placeholder="Например: KPP1" required>
+                        </div>
+                        <div>
+                            <label for="building">Корпус</label>
+                            <input type="text" id="building" name="building" placeholder="Например: Главный корпус">
+                        </div>
+                        <div>
+                            <label for="cameraUrl">Camera URL (RTSP/HTTP)</label>
+                            <input type="text" id="cameraUrl" name="cameraUrl" placeholder="rtsp://user:pass@192.168.1.10:554/stream">
+                        </div>
+                        <div>
+                            <label for="espUrl">ESP URL (турникет)</label>
+                            <input type="text" id="espUrl" name="espUrl" placeholder="http://192.168.1.50/open">
+                        </div>
+                        <div>
+                            <label for="streamUrl">Stream URL (видео в браузере)</label>
+                            <input type="text" id="streamUrl" name="streamUrl" placeholder="http://85.92.122.161:8090/stream">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Добавить</button>
+                </form>
+            </div>
+
+            <!-- Список камер -->
+            <div th:if="${cameras != null and !cameras.isEmpty()}">
+                <div th:each="camera : ${cameras}" class="camera-item">
+                    <div class="camera-info">
+                        <h3>
+                            <span th:text="${camera.name}">KPP1</span>
+                            <span class="building-tag" th:if="${camera.building != null and camera.building != ''}"
+                                th:text="${camera.building}">Корпус</span>
+                        </h3>
+                        <div class="camera-urls" th:if="${camera.cameraUrl != null and camera.cameraUrl != ''}">
+                            <span>Камера:</span> <span th:text="${camera.cameraUrl}">rtsp://...</span>
+                        </div>
+                        <div class="camera-urls" th:if="${camera.espUrl != null and camera.espUrl != ''}">
+                            <span>ESP:</span> <span th:text="${camera.espUrl}">http://...</span>
+                        </div>
+                        <div class="camera-urls" th:if="${camera.streamUrl != null and camera.streamUrl != ''}">
+                            <span>Stream:</span> <span th:text="${camera.streamUrl}">http://...</span>
+                        </div>
+                    </div>
+                    <form method="post" th:action="@{/cameras/delete/{id}(id=${camera.id})}">
+                        <button type="submit" class="btn btn-danger btn-small"
+                            onclick="return confirm('Удалить камеру?')">Удалить</button>
+                    </form>
+                </div>
+            </div>
+
+            <div th:if="${cameras == null or cameras.isEmpty()}" class="empty-state">
+                <div class="empty-icon">&#x1F4F9;</div>
+                <h3>Нет камер</h3>
+                <p>Добавьте первую камеру — её название должно совпадать с camera_name Python-клиента</p>
+            </div>
+        </div>
+    </main>
+</body>
+
+</html>

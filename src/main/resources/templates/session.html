@@ -1,513 +1,462 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
+
 <head>
     <meta charset="UTF-8">
-    <title>Мероприятия</title>
+    <title>Мероприятия - FacePanel</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- SockJS + STOMP для WebSocket -->
-    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
-    
-    <!-- Общие стили -->
-    <link rel="stylesheet" href="/css/common.css">
-    
+
+
+    <script th:src="@{/js/sockjs.min.js}"></script>
+    <script th:src="@{/js/stomp.min.js}"></script>
+
+    <link rel="stylesheet" th:href="@{/css/common.css}">
+
     <style>
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+        .active-session-card {
+            border-color: var(--accent-border);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.06), var(--bg-card));
         }
-        
-        .card {
-            background: #1b1b1b;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            box-shadow: 0 0 12px rgba(0, 0, 0, 0.4);
-        }
-        
-        .active-session {
-            background: rgba(76, 209, 55, 0.1);
-            border: 2px solid #4cd137;
-        }
-        
+
         .session-item {
-            background: #222;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
+            background: var(--bg-elevated);
+            padding: 16px 20px;
+            border-radius: var(--radius-md);
+            margin-bottom: 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            border: 1px solid var(--border);
+            transition: border-color var(--transition);
+            gap: 16px;
         }
-        
-        .session-item.active {
-            background: rgba(76, 209, 55, 0.15);
-            border: 1px solid #4cd137;
+
+        .session-item:hover {
+            border-color: var(--border-hover);
         }
-        
+
         .session-info h3 {
-            margin: 0 0 5px 0;
-            color: #fff;
+            margin: 0 0 4px;
+            color: var(--text-primary);
+            font-size: 1rem;
         }
-        
+
         .session-info p {
             margin: 0;
-            color: #aaa;
-            font-size: 0.9em;
+            color: var(--text-muted);
+            font-size: 0.85rem;
         }
-        
+
         .session-status {
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-size: 0.8em;
-            font-weight: bold;
+            padding: 5px 12px;
+            border-radius: var(--radius-pill);
+            font-size: 0.78rem;
+            font-weight: 600;
+            white-space: nowrap;
         }
-        
+
         .status-active {
-            background: #4cd137;
-            color: #000;
+            background: var(--success-subtle);
+            color: var(--success);
+            border: 1px solid var(--success-border);
         }
-        
+
         .status-completed {
-            background: #ff4757;
-            color: #fff;
+            background: var(--danger-subtle);
+            color: var(--danger);
+            border: 1px solid var(--danger-border);
         }
-        
-        button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s ease;
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin: 20px 0;
         }
-        
-        .btn-start {
-            background: #4cd137;
-            color: #000;
-        }
-        
-        .btn-start:hover {
-            background: #44a03a;
-        }
-        
-        .btn-stop {
-            background: #ff4757;
-            color: #fff;
-        }
-        
-        .btn-stop:hover {
-            background: #e74c3c;
-        }
-        
-        .btn-disabled {
-            background: #666;
-            color: #999;
-            cursor: not-allowed;
-        }
-        
-        input {
-            padding: 10px;
-            border: 1px solid #444;
-            border-radius: 6px;
-            background: #333;
-            color: #fff;
-            width: 300px;
-            margin-right: 10px;
-        }
-        
-        input:focus {
-            outline: none;
-            border-color: #4cd137;
-        }
-        
-        .form-group {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        
-        .history-section {
-            margin-top: 30px;
-        }
-        
-        .history-title {
-            color: #fff;
-            margin-bottom: 15px;
-            font-size: 1.2em;
-        }
-        
+
         .attendance-list {
             margin-top: 20px;
-            background: #222;
-            padding: 15px;
-            border-radius: 8px;
+            background: var(--bg-elevated);
+            padding: 20px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
         }
-        
+
         .person-attendance {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 10px 0;
-            border-bottom: 1px solid #333;
+            border-bottom: 1px solid var(--border);
+            gap: 12px;
         }
-        
+
         .person-attendance:last-child {
             border-bottom: none;
         }
-        
+
         .person-name {
-            color: #fff;
+            color: var(--text-primary);
             font-weight: 600;
-            margin-bottom: 3px;
+            font-size: 0.95rem;
         }
-        
+
         .person-position {
-            color: #aaa;
-            font-size: 0.9em;
+            color: var(--text-muted);
+            font-size: 0.85rem;
         }
-        
-        .attendance-status {
-            font-weight: bold;
-        }
-        
+
         .status-present {
-            color: #4cd137;
+            color: var(--success);
+            font-weight: 600;
+            font-size: 0.9rem;
         }
-        
+
         .status-absent {
-            color: #ff4757;
+            color: var(--danger);
+            font-weight: 600;
+            font-size: 0.9rem;
         }
 
         .attendance-time {
-            margin-top: 5px;
-            font-size: 0.85em;
-            color: #aaa;
+            margin-top: 4px;
         }
 
         .time-label {
-            color: #666;
+            color: var(--text-dim);
+            font-size: 0.82rem;
         }
 
         .time-value {
-            color: #4cd137;
-            font-weight: bold;
-            font-family: monospace;
+            color: var(--accent);
+            font-weight: 600;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.85rem;
         }
 
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
+        .create-form {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .create-form input[type="text"] {
+            flex: 1;
+        }
+
+        .create-form select {
+            flex: 0 0 auto;
+            width: auto;
+        }
+
+        .history-section {
+            margin-top: 28px;
+        }
+
+        .session-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .detail-link {
+            padding: 6px 14px;
+            background: var(--blue-subtle);
+            color: var(--blue);
+            border: 1px solid var(--blue-border);
+            border-radius: var(--radius-sm);
+            font-size: 0.82rem;
+            font-weight: 500;
+            transition: all var(--transition);
+        }
+
+        .detail-link:hover {
+            background: var(--blue);
+            color: #fff;
+        }
+
+        @media (max-width: 768px) {
+            .create-form {
+                flex-direction: column;
+            }
+
+            .create-form input[type="text"],
+            .create-form select {
+                width: 100%;
+            }
+
+            .session-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
         }
     </style>
 </head>
+
 <body>
 
-<!-- Включаем общий хедер -->
-<div th:replace="~{fragments/header :: header}"></div>
+    <div th:replace="~{fragments/header :: header}"></div>
 
-<!-- Основной контент -->
-<main class="main-content">
-    <div class="card">
-        <h1>📅 Управление мероприятиями</h1>
+    <main class="main-content">
+        <div class="card">
+            <h1>Мероприятия</h1>
 
-    <!-- Активное мероприятие -->
-    <div class="card active-session" th:if="${active != null}">
-        <h2>🟢 Активное мероприятие</h2>
-        <div class="session-item active">
-            <div class="session-info">
-                <h3 th:text="${active.name}">Название мероприятия</h3>
-                <p>Начато: <span th:text="${#temporals.format(active.startTime, 'dd.MM.yyyy HH:mm')}">время</span></p>
+            <!-- Активное мероприятие -->
+            <div class="card active-session-card" th:if="${active != null}">
+                <h2>Активное мероприятие</h2>
+                <div class="session-item">
+                    <div class="session-info">
+                        <h3 th:text="${active.name}">Название</h3>
+                        <p>Начато: <span
+                                th:text="${#temporals.format(active.startTime, 'dd.MM.yyyy HH:mm')}">время</span></p>
+                        <p>Аудитория: <span
+                                th:text="${active.targetType == 'Student' ? 'Студенты' : (active.targetType == 'Employee' ? 'Сотрудники' : 'Все')}">Все</span></p>
+                        <p>Камера: <span
+                                th:text="${active.cameraName != null and active.cameraName != '' ? active.cameraName : 'Все камеры'}">Все камеры</span></p>
+                    </div>
+                    <span class="session-status status-active">АКТИВНО</span>
+                </div>
+
+                <!-- Статистика -->
+                <div class="stats-grid" th:if="${persons != null}">
+                    <div class="stat-card">
+                        <div class="stat-number" th:text="${persons != null ? #lists.size(persons) : 0}">0</div>
+                        <div class="stat-label">Всего</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" style="color: var(--success);"
+                            th:text="${attendanceStatus != null ? #maps.size(attendanceStatus) : 0}">0</div>
+                        <div class="stat-label">Присутствуют</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" style="color: var(--danger);"
+                            th:text="${persons != null and attendanceStatus != null ? #lists.size(persons) - #maps.size(attendanceStatus) : 0}">
+                            0</div>
+                        <div class="stat-label">Отсутствуют</div>
+                    </div>
+                </div>
+
+                <!-- Список персон -->
+                <div class="attendance-list" th:if="${persons != null}">
+                    <h3>Контроль посещения</h3>
+                    <input type="text" id="person-search" placeholder="Поиск по имени..."
+                        style="width: 100%; margin-bottom: 12px;"
+                        oninput="filterPersonList(this.value)">
+                    <div id="person-items">
+                    <div th:each="person : ${persons}" class="person-attendance" th:attr="data-person-id=${person.id}">
+                        <div class="person-info">
+                            <div class="person-name"
+                                th:text="${person.firstName + (person.lastName != null ? ' ' + person.lastName : '')}">
+                                Имя</div>
+                            <div class="person-position" th:text="${person.position}">Должность</div>
+                        </div>
+                        <div class="attendance-status">
+                            <span
+                                th:if="${attendanceStatus != null and person.id != null and attendanceStatus.containsKey(person.id) and attendanceStatus[person.id]}"
+                                class="status-present">Присутствует</span>
+                            <span
+                                th:unless="${attendanceStatus != null and person.id != null and attendanceStatus.containsKey(person.id) and attendanceStatus[person.id]}"
+                                class="status-absent">Отсутствует</span>
+                        </div>
+                        <div class="attendance-time"
+                            th:if="${attendanceStatus != null and person.id != null and attendanceStatus.containsKey(person.id) and attendanceStatus[person.id]}">
+                            <span class="time-value"
+                                th:text="${attendanceTimes != null and attendanceTimes.containsKey(person.id) ? #temporals.format(attendanceTimes[person.id], 'HH:mm:ss') : '--:--:--'}">12:34:56</span>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);">
+                    <form method="post" th:action="@{/session/stop}" style="display: inline;">
+                        <button type="submit" class="btn btn-danger" onclick="return confirm('Завершить мероприятие?')">
+                            Завершить мероприятие
+                        </button>
+                    </form>
+                </div>
             </div>
-            <div>
-                <span class="session-status status-active">АКТИВНО</span>
+
+            <!-- Создание нового -->
+            <div class="card" th:if="${active == null}">
+                <h2>Новое мероприятие</h2>
+                <form method="post" th:action="@{/session/start}" class="create-form">
+                    <input type="text" name="name" placeholder="Название мероприятия" required>
+                    <select name="targetType">
+                        <option value="ALL">Все</option>
+                        <option value="Student">Студенты</option>
+                        <option value="Employee">Сотрудники</option>
+                    </select>
+                    <select name="cameraName">
+                        <option value="">Все камеры</option>
+                        <option th:each="cam : ${cameras}" th:value="${cam.name}"
+                            th:text="${cam.name + (cam.building != null and cam.building != '' ? ' (' + cam.building + ')' : '')}">KPP1</option>
+                    </select>
+                    <button type="submit" class="btn btn-primary">Начать</button>
+                </form>
+                <div class="help-text" style="margin-top: 10px;">
+                    После создания мероприятия начнется контроль посещения в реальном времени
+                </div>
+            </div>
+
+            <!-- История -->
+            <div class="history-section" th:if="${sessions != null and !sessions.isEmpty()}">
+                <h2>История мероприятий</h2>
+                <div th:each="sessionItem : ${sessions}" class="session-item">
+                    <div class="session-info">
+                        <h3 th:text="${sessionItem.name}">Название</h3>
+                        <p>
+                            <span
+                                th:text="${#temporals.format(sessionItem.startTime, 'dd.MM.yyyy HH:mm')}">начало</span>
+                            <span th:if="${sessionItem.endTime != null}">
+                                &mdash; <span
+                                    th:text="${#temporals.format(sessionItem.endTime, 'dd.MM.yyyy HH:mm')}">конец</span>
+                            </span>
+                            &middot; <span
+                                th:text="${sessionItem.targetType == 'Student' ? 'Студенты' : (sessionItem.targetType == 'Employee' ? 'Сотрудники' : 'Все')}">Все</span>
+                            &middot; <span
+                                th:text="${sessionItem.cameraName != null and sessionItem.cameraName != '' ? sessionItem.cameraName : 'Все камеры'}">Все камеры</span>
+                        </p>
+                    </div>
+                    <div class="session-actions">
+                        <span class="session-status"
+                            th:classappend="${sessionItem.active} ? 'status-active' : 'status-completed'"
+                            th:text="${sessionItem.active} ? 'АКТИВНО' : 'ЗАВЕРШЕНО'">статус</span>
+                        <a th:href="@{/statistics/export/excel(sessionId=${sessionItem.id})}"
+                            class="detail-link">Excel</a>
+                        <a th:href="@{/session/history/{id}(id=${sessionItem.id})}" th:if="${!sessionItem.active}"
+                            class="detail-link">Подробнее</a>
+                        <form method="post" th:action="@{/session/delete/{id}(id=${sessionItem.id})}"
+                            style="display: inline;">
+                            <button type="submit" class="btn btn-danger btn-small"
+                                onclick="return confirm('Удалить мероприятие? Записи посещений сохранятся, но отвяжутся от него.')">Удалить</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div th:if="${sessions == null or sessions.isEmpty()}" class="empty-state">
+                <div class="empty-icon">&#x1F4C5;</div>
+                <h3>Нет мероприятий</h3>
+                <p>Создайте первое мероприятие для начала работы</p>
             </div>
         </div>
-        
-        <!-- Статистика мероприятия -->
-        <div class="session-stats" th:if="${persons != null}">
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px;">
-                <div style="background: #222; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #333;">
-                    <div class="stat-total" style="font-size: 1.5em; font-weight: bold; color: #4cd137;" th:text="${persons != null ? #lists.size(persons) : 0}">0</div>
-                    <div style="color: #aaa; font-size: 0.9em;">Всего персон</div>
-                </div>
-                <div style="background: #222; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #333;">
-                    <div class="stat-present" style="font-size: 1.5em; font-weight: bold; color: #4cd137;" th:text="${attendanceStatus != null ? #maps.size(attendanceStatus) : 0}">0</div>
-                    <div style="color: #aaa; font-size: 0.9em;">Присутствуют</div>
-                </div>
-                <div style="background: #222; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #333;">
-                    <div class="stat-absent" style="font-size: 1.5em; font-weight: bold; color: #ff4757;" th:text="${persons != null and attendanceStatus != null ? #lists.size(persons) - #maps.size(attendanceStatus) : 0}">0</div>
-                    <div style="color: #aaa; font-size: 0.9em;">Отсутствуют</div>
-                </div>
-            </div>
-        </div>
+    </main>
 
-        <!-- Список персон с галочками -->
-        <div class="attendance-list" th:if="${persons != null}">
-            <h3>👥 Контроль посещения</h3>
-            <div th:each="person : ${persons}" class="person-attendance" th:attr="data-person-id=${person.id}">
-                <div class="person-info">
-                    <div class="person-name" th:text="${person.firstName + (person.lastName != null ? ' ' + person.lastName : '')}">Имя Фамилия</div>
-                    <div class="person-position" th:text="${person.position}">Должность</div>
-                </div>
-                <div class="attendance-status">
-                    <span th:if="${attendanceStatus != null and person.id != null and attendanceStatus.containsKey(person.id) and attendanceStatus[person.id]}" 
-                          class="status-present">✅ Пришел</span>
-                    <span th:unless="${attendanceStatus != null and person.id != null and attendanceStatus.containsKey(person.id) and attendanceStatus[person.id]}" 
-                          class="status-absent">❌ Не пришел</span>
-                </div>
-                <div class="attendance-time" th:if="${attendanceStatus != null and person.id != null and attendanceStatus.containsKey(person.id) and attendanceStatus[person.id]}">
-                    <span class="time-label">Время:</span>
-                    <span class="time-value" th:text="${attendanceTimes != null and attendanceTimes.containsKey(person.id) ? #temporals.format(attendanceTimes[person.id], 'HH:mm:ss') : '--:--:--'}">12:34:56</span>
-                </div>
-            </div>
-        </div>
-        
-        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #333;">
-            <form method="post" action="/session/stop" style="display: inline;">
-                <button type="submit" class="btn-stop" onclick="return confirm('Вы уверены, что хотите завершить мероприятие?')">
-                    ⏹ Завершить мероприятие
-                </button>
-            </form>
-        </div>
-    </div>
+    <script>
+        let stompClient = null;
+        let reconnectAttempts = 0;
 
-    <!-- Создание нового мероприятия -->
-    <div class="card" th:if="${active == null}">
-        <h2>▶ Создать новое мероприятие</h2>
-        <form method="post" action="/session/start" style="display: flex; gap: 15px; align-items: center;">
-            <input type="text" 
-                   name="name" 
-                   placeholder="Введите название мероприятия" 
-                   required 
-                   style="flex: 1; padding: 12px; border: 1px solid #444; border-radius: 8px; background: #333; color: #fff; font-size: 16px;" />
-            <button type="submit" class="btn-start" style="white-space: nowrap;">
-                ▶ Начать мероприятие
-            </button>
-        </form>
-        <div style="margin-top: 10px; color: #aaa; font-size: 0.9em;">
-            💡 После создания мероприятия начнется контроль посещения в реальном времени
-        </div>
-    </div>
+        function connect() {
+            const socket = new SockJS('/ws');
+            stompClient = Stomp.over(socket);
+            stompClient.debug = null;
 
-    <!-- История мероприятий -->
-    <div class="history-section" th:if="${sessions != null and !sessions.isEmpty()}">
-        <h2 class="history-title">📋 История мероприятий</h2>
-        <div th:each="sessionItem : ${sessions}" class="session-item" th:classappend="${sessionItem.active} ? 'active' : ''">
-            <div class="session-info">
-                <h3 th:text="${sessionItem.name}">Название</h3>
-                <p>
-                    <span th:text="${#temporals.format(sessionItem.startTime, 'dd.MM.yyyy HH:mm')}">начало</span>
-                    <span th:if="${sessionItem.endTime != null}">
-                        - <span th:text="${#temporals.format(sessionItem.endTime, 'dd.MM.yyyy HH:mm')}">конец</span>
-                    </span>
-                </p>
-            </div>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <span class="session-status" 
-                      th:classappend="${sessionItem.active} ? 'status-active' : 'status-completed'"
-                      th:text="${sessionItem.active} ? 'АКТИВНО' : 'ЗАВЕРШЕНО'">статус</span>
-                <a th:href="@{/session/history/{id}(id=${sessionItem.id})}" 
-                   th:if="${!sessionItem.active}"
-                   style="padding: 6px 12px; background: #007bff; color: #fff; text-decoration: none; border-radius: 6px; font-size: 0.9em;"
-                   onmouseover="this.style.background='#0056b3'"
-                   onmouseout="this.style.background='#007bff'">
-                   📋 Подробнее
-                </a>
-            </div>
-        </div>
-    </div>
+            stompClient.connect({}, function (frame) {
+                reconnectAttempts = 0;
+                updateConnectionStatus(true);
 
-    <!-- Пустое состояние -->
-    <div class="card" th:if="${sessions == null or sessions.isEmpty()}">
-        <h2>📋 История мероприятий</h2>
-        <p style="color: #aaa; text-align: center; padding: 20px;">
-            Пока нет созданных мероприятий
-        </p>
-    </div>
-</div>
+                stompClient.subscribe('/topic/attendance', function (message) {
+                    const data = JSON.parse(message.body);
+                    updateAttendanceStatus(data);
+                });
 
-<script>
-    // WebSocket подключение для обновления в реальном времени
-    let stompClient = null;
-    let reconnectAttempts = 0;
-    const maxReconnectAttempts = 5;
-
-    function connect() {
-        const socket = new SockJS('/ws');
-        stompClient = Stomp.over(socket);
-        
-        stompClient.connect({}, function(frame) {
-            console.log('🔗 Подключен к WebSocket');
-            reconnectAttempts = 0;
-            updateConnectionStatus(true);
-            
-            // Подписываемся на обновления распознаваний
-            stompClient.subscribe('/topic/attendance', function(message) {
-                const data = JSON.parse(message.body);
-                console.log('📡 Получено обновление распознавания:', data);
-                updateAttendanceStatus(data);
+                stompClient.subscribe('/topic/persons', function (message) {
+                    const data = JSON.parse(message.body);
+                    handlePersonUpdate(data);
+                });
+            }, function (error) {
+                updateConnectionStatus(false);
+                if (reconnectAttempts < 5) {
+                    reconnectAttempts++;
+                    setTimeout(connect, 3000);
+                }
             });
-            
-            // Подписываемся на обновления персон
-            stompClient.subscribe('/topic/persons', function(message) {
-                const data = JSON.parse(message.body);
-                console.log('👥 Получено обновление персон:', data);
-                handlePersonUpdate(data);
-            });
-            
-        }, function(error) {
-            console.error('❌ Ошибка WebSocket:', error);
-            updateConnectionStatus(false);
-            reconnect();
-        });
-    }
-
-    function reconnect() {
-        if (reconnectAttempts < maxReconnectAttempts) {
-            reconnectAttempts++;
-            console.log(`🔄 Попытка переподключения ${reconnectAttempts}/${maxReconnectAttempts}`);
-            setTimeout(connect, 3000);
-        } else {
-            console.error('❌ Максимальное количество попыток переподключения достигнуто');
         }
-    }
 
-    function updateConnectionStatus(connected) {
-        const statusEl = document.getElementById('connection-status');
-        if (statusEl) {
-            if (connected) {
-                statusEl.textContent = '🟢 Подключено';
-                statusEl.className = 'connection-status connected';
-            } else {
-                statusEl.textContent = '🔴 Отключено';
-                statusEl.className = 'connection-status disconnected';
-            }
-        }
-    }
-
-    function updateAttendanceStatus(recognitionData) {
-        // Обновляем статус посещения для конкретной персоны
-        const personId = recognitionData.personId;
-        if (personId) {
-            const personElement = document.querySelector(`[data-person-id="${personId}"]`);
-            if (personElement) {
-                const statusElement = personElement.querySelector('.attendance-status span');
-                if (statusElement) {
-                    statusElement.className = 'status-present';
-                    statusElement.textContent = '✅ Пришел';
-                    
-                    // Добавляем анимацию обновления
-                    statusElement.style.animation = 'pulse 0.5s ease-in-out';
-                    setTimeout(() => {
-                        statusElement.style.animation = '';
-                    }, 500);
+        function updateConnectionStatus(connected) {
+            const statusEl = document.getElementById('connection-status');
+            if (statusEl) {
+                if (connected) {
+                    statusEl.innerHTML = '<span>Подключено</span>';
+                    statusEl.className = 'connection-status connected';
+                } else {
+                    statusEl.innerHTML = '<span>Отключено</span>';
+                    statusEl.className = 'connection-status disconnected';
                 }
             }
         }
-    }
 
-    function handlePersonUpdate(data) {
-        if (data.action === 'PERSON_ADDED' || data.action === 'PERSON_DELETED') {
-            console.log('🔄 Обновляем список персон из-за изменений');
-            // Обновляем список персон через AJAX
-            updatePersonsList();
+        function updateAttendanceStatus(recognitionData) {
+            const personId = recognitionData.personId;
+            if (personId) {
+                const personElement = document.querySelector('[data-person-id="' + personId + '"]');
+                if (personElement) {
+                    const statusElement = personElement.querySelector('.attendance-status span');
+                    if (statusElement) {
+                        statusElement.className = 'status-present';
+                        statusElement.textContent = 'Присутствует';
+                        statusElement.style.animation = 'pulse 0.5s ease-in-out';
+                        setTimeout(() => { statusElement.style.animation = ''; }, 500);
+                    }
+                }
+            }
         }
-    }
 
-    function updatePersonsList() {
-        // Проверяем, есть ли активное мероприятие
-        const activeSession = document.querySelector('.active-session');
-        if (!activeSession) {
-            console.log('❌ Нет активного мероприятия, пропускаем обновление');
-            return;
+        function handlePersonUpdate(data) {
+            if (data.action === 'PERSON_ADDED' || data.action === 'PERSON_DELETED') {
+                updatePersonsList();
+            }
         }
 
-        // Загружаем обновленный список персон
-        fetch('/session/persons-data')
-            .then(response => response.json())
-            .then(data => {
-                console.log('📊 Получены обновленные данные персон:', data);
-                updatePersonsDisplay(data.persons, data.attendanceStatus);
-            })
-            .catch(error => {
-                console.error('❌ Ошибка при загрузке персон:', error);
-                // Fallback - перезагружаем страницу
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
+        function updatePersonsList() {
+            const activeSession = document.querySelector('.active-session-card');
+            if (!activeSession) return;
+
+            fetch('/session/persons-data')
+                .then(response => response.json())
+                .then(data => {
+                    updatePersonsDisplay(data.persons, data.attendanceStatus);
+                })
+                .catch(() => {
+                    setTimeout(() => { window.location.reload(); }, 1000);
+                });
+        }
+
+        function updatePersonsDisplay(persons, attendanceStatus) {
+            const personItems = document.getElementById('person-items');
+            if (!personItems) return;
+
+            let html = '';
+            persons.forEach(person => {
+                const isPresent = attendanceStatus && attendanceStatus[person.id];
+                html += '<div class="person-attendance" data-person-id="' + person.id + '">' +
+                    '<div class="person-info"><div class="person-name">' + person.firstName + ' ' + (person.lastName || '') + '</div>' +
+                    '<div class="person-position">' + (person.position || '') + '</div></div>' +
+                    '<div class="attendance-status"><span class="' + (isPresent ? 'status-present' : 'status-absent') + '">' +
+                    (isPresent ? 'Присутствует' : 'Отсутствует') + '</span></div></div>';
             });
-    }
+            personItems.innerHTML = html;
 
-    function updatePersonsDisplay(persons, attendanceStatus) {
-        const attendanceList = document.querySelector('.attendance-list');
-        if (!attendanceList) return;
+            // Повторно применяем поиск после обновления списка
+            const searchInput = document.getElementById('person-search');
+            if (searchInput && searchInput.value) filterPersonList(searchInput.value);
+        }
 
-        // Обновляем статистику
-        updateStats(persons, attendanceStatus);
-
-        // Обновляем список персон
-        const personsContainer = attendanceList.querySelector('.persons-container') || attendanceList;
-        let personsHTML = '<h3>👥 Контроль посещения</h3>';
-        
-        persons.forEach(person => {
-            const isPresent = attendanceStatus && attendanceStatus[person.id];
-            const attendanceTime = attendanceTimes && attendanceTimes[person.id];
-            const timeStr = attendanceTime ? new Date(attendanceTime).toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit', second: '2-digit'}) : '--:--:--';
-            
-            personsHTML += `
-                <div class="person-attendance" data-person-id="${person.id}">
-                    <div class="person-info">
-                        <div class="person-name">${person.firstName} ${person.lastName || ''}</div>
-                        <div class="person-position">${person.position || ''}</div>
-                    </div>
-                    <div class="attendance-status">
-                        <span class="${isPresent ? 'status-present' : 'status-absent'}">
-                            ${isPresent ? '✅ Пришел' : '❌ Не пришел'}
-                        </span>
-                        ${isPresent ? `<div class="attendance-time"><span class="time-label">Время:</span><span class="time-value">${timeStr}</span></div>` : ''}
-                    </div>
-                </div>
-            `;
+        document.addEventListener('DOMContentLoaded', connect);
+        window.addEventListener('focus', function () {
+            if (!stompClient || !stompClient.connected) connect();
         });
 
-        personsContainer.innerHTML = personsHTML;
-        console.log('✅ Список персон обновлен');
-    }
-
-    function updateStats(persons, attendanceStatus) {
-        const totalPersons = persons ? persons.length : 0;
-        const presentCount = attendanceStatus ? Object.keys(attendanceStatus).length : 0;
-        const absentCount = totalPersons - presentCount;
-
-        // Обновляем статистику
-        const statsContainer = document.querySelector('.session-stats');
-        if (statsContainer) {
-            const totalEl = statsContainer.querySelector('.stat-total');
-            const presentEl = statsContainer.querySelector('.stat-present');
-            const absentEl = statsContainer.querySelector('.stat-absent');
-            
-            if (totalEl) totalEl.textContent = totalPersons;
-            if (presentEl) presentEl.textContent = presentCount;
-            if (absentEl) absentEl.textContent = absentCount;
+        // Поиск по списку участников мероприятия
+        function filterPersonList(query) {
+            const q = query.trim().toLowerCase();
+            document.querySelectorAll('.person-attendance').forEach(function (item) {
+                const name = (item.querySelector('.person-name')?.textContent || '').toLowerCase();
+                item.style.display = (!q || name.includes(q)) ? '' : 'none';
+            });
         }
-    }
-
-    // Подключаемся при загрузке страницы
-    document.addEventListener('DOMContentLoaded', function() {
-        connect();
-    });
-
-    // Переподключаемся при потере фокуса/возврате
-    window.addEventListener('focus', function() {
-        if (!stompClient || !stompClient.connected) {
-            connect();
-        }
-    });
-</script>
-</main>
+    </script>
+    </main>
 </body>
+
 </html>

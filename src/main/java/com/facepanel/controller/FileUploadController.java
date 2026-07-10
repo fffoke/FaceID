@@ -90,9 +90,10 @@ public class FileUploadController {
             // Транслитерируем и очищаем имя от недопустимых символов
             baseName = TransliterationUtil.cleanFilename(baseName);
             
-            // Добавляем UUID для уникальности
-            String filename = baseName + "_" + UUID.randomUUID().toString().substring(0, 8) + extension;
-            String filenameWithoutExt = baseName + "_" + UUID.randomUUID().toString().substring(0, 8);
+            // Добавляем UUID для уникальности (один общий UUID для имени и расширения)
+            String uniqueSuffix = UUID.randomUUID().toString().substring(0, 8);
+            String filename = baseName + "_" + uniqueSuffix + extension;
+            String filenameWithoutExt = baseName + "_" + uniqueSuffix;
             
             // Сохраняем файл
             Path filePath = facesPath.resolve(filename);

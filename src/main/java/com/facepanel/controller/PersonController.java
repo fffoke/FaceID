@@ -2,23 +2,22 @@ package com.facepanel.controller;
 
 import com.facepanel.model.Person;
 import com.facepanel.service.PersonService;
-import com.facepanel.util.TransliterationUtil;
+import com.facepanel.service.PhotoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.springframework.http.ResponseEntity;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @Controller
 @RequiredArgsConstructor
@@ -26,22 +25,24 @@ import java.util.UUID;
 public class PersonController {
 
     private final PersonService personService;
-    
+    private final PhotoService photoService;
+
     @Value("${app.faces.directory:faces}")
     private String facesDirectory;
 
     @GetMapping
-    public String list(Model model, 
+    public String list(Model model,
+                      @RequestParam(required = false) String search,
                       @RequestParam(required = false) String group,
                       @RequestParam(required = false) String position,
                       @RequestParam(required = false) String dateFrom,
                       @RequestParam(required = false) String dateTo) {
-        
+
         // Получаем всех персон с фильтрацией
         List<Person> allPersons = personService.getAll();
-        
+
         // Применяем фильтры
-        List<Person> filteredPersons = personService.getFilteredPersons(allPersons, group, position, dateFrom, dateTo);
+        List<Person> filteredPersons = personService.getFilteredPersons(allPersons, search, group, position, dateFrom, dateTo);
         
         // Группируем персон
         Map<String, List<Person>> groupedPersons = personService.groupPersonsByGroup(filteredPersons);
@@ -52,6 +53,7 @@ public class PersonController {
         model.addAttribute("persons", filteredPersons);
         model.addAttribute("groupedPersons", groupedPersons);
         model.addAttribute("stats", stats);
+        model.addAttribute("selectedSearch", search);
         model.addAttribute("selectedGroup", group);
         model.addAttribute("selectedPosition", position);
         model.addAttribute("selectedDateFrom", dateFrom);
@@ -72,6 +74,7 @@ public class PersonController {
         Person person = personService.findById(id)
                 .orElseThrow(() -> new RuntimeException("Персона не найдена"));
         model.addAttribute("person", person);
+        model.addAttribute("personService", personService);
         return "person_form";
     }
 
@@ -109,7 +112,9 @@ public class PersonController {
             if (photoFile != null && !photoFile.isEmpty()) {
                 String filename = savePhotoFile(photoFile, person);
                 person.setPhotoFilename(filename);
-                
+                // Сбрасываем эмбеддинг — Python пересчитает автоматически
+                person.setFaceEmbedding(null);
+
                 // Удаляем старый файл, если он существует
                 if (existingPerson.getPhotoFilename() != null && !existingPerson.getPhotoFilename().isEmpty()) {
                     deleteOldPhotoFile(existingPerson.getPhotoFilename());
@@ -122,9 +127,12 @@ public class PersonController {
                         // Переименовываем файл
                         renamePhotoFile(existingPerson.getPhotoFilename(), newFilename);
                         person.setPhotoFilename(newFilename);
+                        // Сбрасываем эмбеддинг — Python пересчитает с новым именем
+                        person.setFaceEmbedding(null);
                     } else {
                         // Имя файла не изменилось, сохраняем старое
                         person.setPhotoFilename(existingPerson.getPhotoFilename());
+                        person.setFaceEmbedding(existingPerson.getFaceEmbedding());
                     }
                 }
             }
@@ -149,93 +157,18 @@ public class PersonController {
         if (contentType == null || !contentType.startsWith("image/")) {
             throw new IllegalArgumentException("Выберите изображение (JPG, PNG, GIF)");
         }
-        
+
         // Проверяем размер файла (максимум 5MB)
         if (file.getSize() > 5 * 1024 * 1024) {
             throw new IllegalArgumentException("Размер файла не должен превышать 5MB");
         }
-        
-        // Создаем папку faces, если её нет
-        Path facesPath = Paths.get(facesDirectory);
-        if (!Files.exists(facesPath)) {
-            Files.createDirectories(facesPath);
-        }
-        
-        // Генерируем имя файла на основе имени персоны
-        String originalFilename = file.getOriginalFilename();
-        
-        // Определяем расширение на основе MIME типа
-        String extension = ".jpg"; // По умолчанию jpg
-        if (contentType != null) {
-            switch (contentType.toLowerCase()) {
-                case "image/png":
-                    extension = ".png";
-                    break;
-                case "image/gif":
-                    extension = ".gif";
-                    break;
-                case "image/jpeg":
-                    extension = ".jpeg";
-                    break;
-                case "image/jpg":
-                default:
-                    extension = ".jpg";
-                    break;
-            }
-        }
-        
-        // Создаем имя файла на основе имени персоны с транслитерацией
-        String personName = person.getFirstName();
-        if (person.getLastName() != null && !person.getLastName().trim().isEmpty()) {
-            personName += "_" + person.getLastName();
-        }
-        
-        // Транслитерируем и очищаем имя от недопустимых символов
-        personName = TransliterationUtil.cleanFilename(personName);
-        
-        // Добавляем UUID для уникальности, если файл с таким именем уже существует
-        String filename = personName + extension;
-        String filenameWithoutExt = personName;
-        
-        // Проверяем, существует ли файл с таким именем
-        Path filePath = facesPath.resolve(filename);
-        int counter = 1;
-        while (Files.exists(filePath)) {
-            filename = personName + "_" + counter + extension;
-            filenameWithoutExt = personName + "_" + counter;
-            filePath = facesPath.resolve(filename);
-            counter++;
-        }
-        
-        // Сохраняем файл
-        Files.copy(file.getInputStream(), filePath);
-        
-        return filenameWithoutExt;
+
+        String extension = photoService.extensionFromMime(contentType);
+        return photoService.savePhoto(person, file.getInputStream(), extension);
     }
-    
+
     private String generatePhotoFilename(Person person) {
-        // Создаем имя файла на основе имени персоны с транслитерацией
-        String personName;
-        
-        // Если есть отчество - используем формат "Фамилия_Имя_Отчество"
-        if (person.getMiddleName() != null && !person.getMiddleName().trim().isEmpty()) {
-            personName = person.getFirstName();
-            if (person.getLastName() != null && !person.getLastName().trim().isEmpty()) {
-                personName = person.getLastName() + "_" + personName;
-            }
-            personName += "_" + person.getMiddleName();
-        } else {
-            // Если нет отчества - используем формат "Имя_Фамилия"
-            personName = person.getFirstName();
-            if (person.getLastName() != null && !person.getLastName().trim().isEmpty()) {
-                personName += "_" + person.getLastName();
-            }
-        }
-        
-        // Транслитерируем и очищаем имя от недопустимых символов
-        personName = TransliterationUtil.cleanFilename(personName);
-        
-        return personName;
+        return photoService.generatePhotoFilename(person);
     }
     
     private void renamePhotoFile(String oldFilename, String newFilename) throws IOException {
@@ -308,13 +241,29 @@ public class PersonController {
 
     @GetMapping("/delete/{id}")
     public String delete(@PathVariable Long id) {
-        // Получаем персону перед удалением, чтобы удалить файл фотографии
         Person person = personService.findById(id).orElse(null);
         if (person != null && person.getPhotoFilename() != null && !person.getPhotoFilename().isEmpty()) {
             deleteOldPhotoFile(person.getPhotoFilename());
         }
-        
         personService.delete(id);
         return "redirect:/persons";
+    }
+
+    @PostMapping("/delete-bulk")
+    @ResponseBody
+    public ResponseEntity<?> deleteBulk(@RequestBody List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return ResponseEntity.badRequest().body("Список ID пуст");
+        }
+        for (Long id : ids) {
+            Person person = personService.findById(id).orElse(null);
+            if (person != null) {
+                if (person.getPhotoFilename() != null && !person.getPhotoFilename().isEmpty()) {
+                    deleteOldPhotoFile(person.getPhotoFilename());
+                }
+                personService.delete(id);
+            }
+        }
+        return ResponseEntity.ok().build();
     }
 }

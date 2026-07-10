@@ -18,6 +18,6 @@ public class WebSocketController {
         if (msg == null) return;
         String name = msg.getName() != null ? msg.getName() : msg.getExternalId();
         if (name == null || name.isBlank()) return;
-        attendanceService.registerDetection(name.trim(), "DETECTED", msg.getSessionId(), msg.getConfidence());
+        attendanceService.registerDetection(name.trim(), "DETECTED", msg.getSessionId(), msg.getConfidence(), msg.getCameraName());
     }
 }

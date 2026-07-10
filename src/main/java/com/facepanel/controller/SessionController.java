@@ -1,7 +1,10 @@
 package com.facepanel.controller;
 
+import com.facepanel.model.Attendance;
 import com.facepanel.model.Session;
 import com.facepanel.model.Person;
+import com.facepanel.repository.AttendanceRepository;
+import com.facepanel.repository.CameraRepository;
 import com.facepanel.repository.SessionRepository;
 import com.facepanel.service.PersonService;
 import com.facepanel.service.AttendanceService;
@@ -15,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Controller
 @RequiredArgsConstructor
@@ -22,6 +26,8 @@ import java.util.Optional;
 public class SessionController {
 
     private final SessionRepository sessionRepository;
+    private final AttendanceRepository attendanceRepository;
+    private final CameraRepository cameraRepository;
     private final PersonService personService;
     private final AttendanceService attendanceService;
 
@@ -32,7 +38,7 @@ public class SessionController {
         
         // Если есть активная сессия, получаем список персон и их статус посещения
         if (active.isPresent()) {
-            List<Person> allPersons = personService.getAll();
+            List<Person> allPersons = personService.filterByTargetType(personService.getAll(), active.get().getTargetType());
             Map<Long, Boolean> attendanceStatus = attendanceService.getAttendanceStatusForSession(active.get().getId());
             Map<Long, LocalDateTime> attendanceTimes = attendanceService.getAttendanceTimesForSession(active.get().getId());
             
@@ -43,11 +49,14 @@ public class SessionController {
         
         model.addAttribute("active", active.orElse(null));
         model.addAttribute("sessions", allSessions);
+        model.addAttribute("cameras", cameraRepository.findAllByOrderByBuildingAscNameAsc());
         return "session";
     }
 
     @PostMapping("/start")
-    public String start(@RequestParam String name) {
+    public String start(@RequestParam String name,
+                        @RequestParam(required = false, defaultValue = "ALL") String targetType,
+                        @RequestParam(required = false) String cameraName) {
         // Завершаем старую, если есть
         sessionRepository.findByActiveTrue().ifPresent(s -> {
             s.setActive(false);
@@ -60,9 +69,22 @@ public class SessionController {
                 .name(name)
                 .startTime(LocalDateTime.now())
                 .active(true)
+                .targetType(targetType)
+                .cameraName(cameraName != null && !cameraName.isBlank() ? cameraName : null)
                 .build();
         sessionRepository.save(newSession);
 
+        return "redirect:/session";
+    }
+
+    @PostMapping("/delete/{id}")
+    public String delete(@PathVariable Long id) {
+        // Отвязываем записи посещений (историю проходов сохраняем), затем удаляем мероприятие
+        List<Attendance> attendances = attendanceRepository.findBySessionId(id);
+        attendances.forEach(a -> a.setSession(null));
+        attendanceRepository.saveAll(attendances);
+
+        sessionRepository.deleteById(id);
         return "redirect:/session";
     }
 
@@ -83,10 +105,10 @@ public class SessionController {
         
         Optional<Session> active = sessionRepository.findByActiveTrue();
         if (active.isPresent()) {
-            List<Person> allPersons = personService.getAll();
+            List<Person> allPersons = personService.filterByTargetType(personService.getAll(), active.get().getTargetType());
             Map<Long, Boolean> attendanceStatus = attendanceService.getAttendanceStatusForSession(active.get().getId());
             Map<Long, LocalDateTime> attendanceTimes = attendanceService.getAttendanceTimesForSession(active.get().getId());
-            
+
             response.put("persons", allPersons);
             response.put("attendanceStatus", attendanceStatus);
             response.put("attendanceTimes", attendanceTimes);
@@ -110,7 +132,7 @@ public class SessionController {
 
         Session session = sessionOpt.get();
 
-        List<Person> allPersons = personService.getAll();
+        List<Person> allPersons = personService.filterByTargetType(personService.getAll(), session.getTargetType());
         Map<Long, Boolean> attendanceStatus = attendanceService.getAttendanceStatusForSession(id);
         Map<Long, LocalDateTime> attendanceTimes = attendanceService.getAttendanceTimesForSession(id);
         
@@ -122,5 +144,5 @@ public class SessionController {
         
         return "session_history";
     }
-    
+
 }

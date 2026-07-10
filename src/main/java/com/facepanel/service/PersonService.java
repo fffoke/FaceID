@@ -1,8 +1,11 @@
 package com.facepanel.service;
 
+import com.facepanel.model.Attendance;
 import com.facepanel.model.Person;
+import com.facepanel.repository.AttendanceRepository;
 import com.facepanel.repository.PersonRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -17,7 +20,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PersonService {
     private final PersonRepository personRepository;
+    private final AttendanceRepository attendanceRepository;
     private final SimpMessagingTemplate messagingTemplate;
+
+    @Value("${app.faces.directory:faces}")
+    private String facesDirectory;
 
     public List<Person> getAll() { 
         return personRepository.findAll().stream()
@@ -33,13 +40,26 @@ public class PersonService {
     
     public Optional<Person> findById(Long id) { return personRepository.findById(id); }
     
-    public void delete(Long id) { 
+    public void delete(Long id) {
+        // Обнуляем ссылку на персону в истории посещаемости (историю сохраняем)
+        List<Attendance> attendances = attendanceRepository.findByPersonId(id);
+        attendances.forEach(a -> a.setPerson(null));
+        attendanceRepository.saveAll(attendances);
+
         personRepository.deleteById(id);
         notifyPersonUpdate("PERSON_DELETED", Map.of("id", id));
     }
     
-    public List<Person> getFilteredPersons(List<Person> persons, String group, String position, String dateFrom, String dateTo) {
+    public List<Person> getFilteredPersons(List<Person> persons, String search, String group, String position, String dateFrom, String dateTo) {
         return persons.stream()
+                .filter(person -> {
+                    if (search == null || search.isBlank()) return true;
+                    String q = search.trim().toLowerCase();
+                    String fio = ((person.getLastName()   != null ? person.getLastName()   : "") + " "
+                               + (person.getFirstName()  != null ? person.getFirstName()  : "") + " "
+                               + (person.getMiddleName() != null ? person.getMiddleName() : "")).toLowerCase();
+                    return fio.contains(q);
+                })
                 .filter(person -> group == null || group.isEmpty() || (person.getGroup() != null && person.getGroup().equals(group)))
                 .filter(person -> position == null || position.isEmpty() || (person.getPosition() != null && person.getPosition().equals(position)))
                 .filter(person -> {
@@ -60,6 +80,16 @@ public class PersonService {
                         return true;
                     }
                 })
+                .collect(Collectors.toList());
+    }
+
+    // targetType: "ALL" / null / "" — все персоны; "Student" / "Employee" — только указанная категория
+    public List<Person> filterByTargetType(List<Person> persons, String targetType) {
+        if (targetType == null || targetType.isEmpty() || "ALL".equals(targetType)) {
+            return persons;
+        }
+        return persons.stream()
+                .filter(p -> targetType.equals(p.getPosition()))
                 .collect(Collectors.toList());
     }
 
@@ -85,7 +115,7 @@ public class PersonService {
                 .collect(Collectors.toList());
         
         if (!singlePersons.isEmpty()) {
-            grouped.put("Управление образования Карагандинской области", singlePersons);
+            grouped.put("Одиночные", singlePersons);
         }
         
         // Добавляем персон без группы
@@ -152,7 +182,7 @@ public class PersonService {
         // Проверяем, какие файлы существуют в папке faces
         String[] extensions = {".jpeg", ".jpg", ".png", ".gif"};
         for (String ext : extensions) {
-            File file = new File("faces/" + photoFilename + ext);
+            File file = new File(facesDirectory + "/" + photoFilename + ext);
             if (file.exists()) {
                 return ext;
             }
@@ -160,6 +190,10 @@ public class PersonService {
         
         // По умолчанию возвращаем .jpg
         return ".jpg";
+    }
+
+    public void notifyBulkImport(int count) {
+        notifyPersonUpdate("BULK_IMPORT", Map.of("count", count));
     }
 
     private void notifyPersonUpdate(String action, Object data) {

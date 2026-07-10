@@ -26,4 +26,11 @@ public class Session {
     
     @Column(name = "active")
     private boolean active;
+
+    @Column(name = "target_type")
+    private String targetType;
+
+    // Камера, привязанная к мероприятию. null/пусто — принимаются все камеры
+    @Column(name = "camera_name")
+    private String cameraName;
 }

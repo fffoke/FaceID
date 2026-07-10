@@ -33,7 +33,19 @@ public class Person {
     @Column(name = "photo_filename")
     private String photoFilename;
 
+    @Column(name = "face_embedding", columnDefinition = "bytea")
+    private byte[] faceEmbedding;
+
     @Column(nullable = false, updatable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "updated_at")
+    @Builder.Default
+    private LocalDateTime updatedAt = LocalDateTime.now();
+
+    @PreUpdate
+    public void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 }
