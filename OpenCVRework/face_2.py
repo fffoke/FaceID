@@ -743,6 +743,7 @@ if __name__ == "__main__":
     parser.add_argument("--faces-dir", help="Путь к папке с лицами (по умолчанию ../faces).")
     parser.add_argument("--server-url", help="URL сервера для /api/v1/recognitions.")
     parser.add_argument("--active-session-url", help="URL для получения активной сессии.")
+    parser.add_argument("--stream-port", type=int, help="Порт MJPEG-стрима (у каждой камеры свой, 0 = выключен).")
     args = parser.parse_args()
 
     # Переопределяем конфиг из аргументов
@@ -764,6 +765,8 @@ if __name__ == "__main__":
         SERVER_URL = args.server_url
     if args.active_session_url:
         ACTIVE_SESSION_URL = args.active_session_url
+    if args.stream_port is not None:
+        STREAM_PORT = args.stream_port
 
     # Обновляем конфигурацию камеры (CLI мог переопределить camera_name)
     fetch_camera_config()
