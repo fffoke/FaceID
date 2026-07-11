@@ -9,6 +9,7 @@ import java.util.Optional;
 
 public interface PersonRepository extends JpaRepository<Person, Long> {
     List<Person> findByFaceEmbeddingIsNull();
+    List<Person> findByNotifyTelegramTrue();
     List<Person> findByUpdatedAtAfter(LocalDateTime since);
     Optional<Person> findByFirstNameAndLastNameAndMiddleName(String firstName, String lastName, String middleName);
     Optional<Person> findByFirstNameAndLastName(String firstName, String lastName);

@@ -43,6 +43,39 @@
 
         .back-link:hover { opacity: 0.7; }
 
+        /* Переключатель камер */
+        .kpp-switcher {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .kpp-btn {
+            padding: 8px 20px;
+            border-radius: var(--radius-pill);
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            transition: all var(--transition);
+        }
+
+        .kpp-btn.active {
+            background: linear-gradient(135deg, var(--accent), #6366f1);
+            color: #fff;
+            border-color: var(--accent);
+        }
+
+        .kpp-btn:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-secondary);
+        }
+
         .building-tag {
             font-size: 0.78rem;
             font-weight: 600;
@@ -213,6 +246,13 @@
         <div class="kpp-top">
             <a href="/kpp" class="back-link">&larr; Все КПП</a>
             <span class="building-tag" th:if="${building != null and building != ''}" th:text="${building}">Корпус</span>
+        </div>
+
+        <!-- Переключатель между камерами -->
+        <div class="kpp-switcher" th:if="${cameras != null and #lists.size(cameras) > 1}">
+            <a th:each="cam : ${cameras}" th:href="@{/kpp/{n}(n=${cam.name})}"
+                class="kpp-btn" th:classappend="${cam.name == cameraName} ? 'active'"
+                th:text="${cam.name}">KPP1</a>
         </div>
 
         <!-- Живое видео с распознаванием (проксируется панелью, если у камеры указан Stream URL) -->

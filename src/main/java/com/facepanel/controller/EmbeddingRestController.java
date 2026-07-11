@@ -30,6 +30,8 @@ public class EmbeddingRestController {
             entry.put("photoFilename", p.getPhotoFilename());
             entry.put("firstName", p.getFirstName());
             entry.put("lastName", p.getLastName());
+            entry.put("fullName", buildFullName(p));
+            entry.put("notify", p.isNotifyTelegram());
             if (p.getFaceEmbedding() != null) {
                 entry.put("embedding", Base64.getEncoder().encodeToString(p.getFaceEmbedding()));
             } else {
@@ -38,6 +40,21 @@ public class EmbeddingRestController {
             result.add(entry);
         }
         return ResponseEntity.ok(result);
+    }
+
+    // ФИО в том же виде, как отображается в панели: Фамилия Имя Отчество
+    private String buildFullName(Person p) {
+        StringBuilder sb = new StringBuilder();
+        if (p.getLastName() != null && !p.getLastName().isBlank()) sb.append(p.getLastName().trim());
+        if (p.getFirstName() != null && !p.getFirstName().isBlank()) {
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(p.getFirstName().trim());
+        }
+        if (p.getMiddleName() != null && !p.getMiddleName().isBlank()) {
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(p.getMiddleName().trim());
+        }
+        return sb.toString();
     }
 
     /**
@@ -53,6 +70,25 @@ public class EmbeddingRestController {
             entry.put("photoFilename", p.getPhotoFilename());
             entry.put("firstName", p.getFirstName());
             entry.put("lastName", p.getLastName());
+            entry.put("fullName", buildFullName(p));
+            entry.put("notify", p.isNotifyTelegram());
+            result.add(entry);
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Лёгкий список персон с включённым Telegram-оповещением.
+     * Python-клиент опрашивает его периодически — галочка работает без рестарта.
+     */
+    @GetMapping("/notify-list")
+    public ResponseEntity<List<Map<String, Object>>> getNotifyList() {
+        List<Person> persons = personRepository.findByNotifyTelegramTrue();
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Person p : persons) {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("photoFilename", p.getPhotoFilename());
+            entry.put("fullName", buildFullName(p));
             result.add(entry);
         }
         return ResponseEntity.ok(result);

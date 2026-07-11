@@ -72,8 +72,12 @@ CV_THREADS = settings.get("cv_threads", 2)
 # Максимальное разрешение для обработки (ключевая оптимизация RAM)
 PROCESS_WIDTH = settings.get("process_width", 640)
 PROCESS_HEIGHT = settings.get("process_height", 480)
-# Список "специальных" имён для webhook-уведомлений
+# Список "специальных" имён для webhook-уведомлений.
+# База — из settings.json, плюс автоматически персоны с галочкой "Оповещение в Telegram" в панели
 NOTIFY_NAMES = set(settings.get("notify_names", []))
+_NOTIFY_NAMES_LOCAL = set(NOTIFY_NAMES)  # неизменяемая база из settings.json
+# ФИО для сообщений: photo_filename -> "Фамилия Имя Отчество" (приходит с сервера)
+NOTIFY_FIO = {}
 # Кому отправлять уведомления (Telegram chat_id)
 NOTIFY_CHAT_IDS = settings.get("notify_chat_ids", ["455789836", "211204013", "2041840960"])
 # Дебаунс уведомлений — не чаще раза в N секунд на человека
@@ -84,13 +88,18 @@ ESP = settings.get("esp_url", "")
 CAMERAS_URL = settings.get("cameras_url", "http://127.0.0.1:8080/api/v1/cameras")
 
 
+# CAMERA_URL взят из реестра (а не из settings.json/CLI) — можно смело перезаписывать
+# при повторном fetch, когда CLI сменил CAMERA_NAME после импорта модуля
+_camera_url_from_registry = False
+
+
 def fetch_camera_config():
     """
     Подтягивает конфигурацию камеры из реестра на сервере по CAMERA_NAME.
     Сервер — источник истины: непустые значения espUrl/cameraUrl перекрывают локальные.
     При недоступности сервера остаются значения из settings.json.
     """
-    global ESP, CAMERA_URL
+    global ESP, CAMERA_URL, _camera_url_from_registry
     if not CAMERA_NAME:
         return
     try:
@@ -99,9 +108,11 @@ def fetch_camera_config():
             cfg = resp.json()
             if cfg.get("espUrl"):
                 ESP = cfg["espUrl"]
-            if cfg.get("cameraUrl") and not CAMERA_URL:
+            if cfg.get("cameraUrl") and (not CAMERA_URL or _camera_url_from_registry):
                 CAMERA_URL = cfg["cameraUrl"]
-            print(f"[face] 🌐 Конфигурация камеры '{CAMERA_NAME}' получена с сервера (ESP={ESP or 'нет'})")
+                _camera_url_from_registry = True
+            print(f"[face] 🌐 Конфигурация камеры '{CAMERA_NAME}' получена с сервера "
+                  f"(camera={CAMERA_URL or 'нет'}, ESP={ESP or 'нет'})")
         elif resp.status_code == 404:
             print(f"[face] ⚠ Камера '{CAMERA_NAME}' не найдена в реестре — добавьте её на странице /cameras")
     except Exception as e:
@@ -288,7 +299,7 @@ def load_face_database():
     Для персон без эмбеддинга — вычисляет из файла и отправляет в БД.
     Fallback: если сервер недоступен, загружает из папки faces/ как раньше.
     """
-    global known_names, _known_person_ids
+    global known_names, _known_person_ids, NOTIFY_NAMES, NOTIFY_FIO
 
     print(f"[face] 🔄 Загрузка базы лиц из сервера ({EMBEDDINGS_URL})...")
 
@@ -299,12 +310,20 @@ def load_face_database():
             new_embeddings = []
             new_names = []
             new_ids = set()
+            new_notify = set(_NOTIFY_NAMES_LOCAL)
+            new_fio = {}
 
             for p in persons:
                 person_id = p["id"]
                 photo = p.get("photoFilename") or ""
                 name = photo if photo else f"person_{person_id}"
                 emb_b64 = p.get("embedding")
+
+                # ФИО и флаг Telegram-оповещения из панели
+                if p.get("fullName"):
+                    new_fio[name] = p["fullName"]
+                if p.get("notify"):
+                    new_notify.add(name)
 
                 if emb_b64:
                     emb_bytes = base64.b64decode(emb_b64)
@@ -328,8 +347,11 @@ def load_face_database():
                 known_names = new_names
                 _known_person_ids = new_ids
                 _rebuild_faiss_index(new_embeddings)
+            NOTIFY_NAMES = new_notify
+            NOTIFY_FIO = new_fio
 
-            print(f"[face] 📊 Загружено {_faiss_index.ntotal} лиц в FAISS индекс")
+            print(f"[face] 📊 Загружено {_faiss_index.ntotal} лиц в FAISS индекс, "
+                  f"Telegram-оповещения: {len(NOTIFY_NAMES)}")
             return
     except Exception as e:
         print(f"[face] ⚠ Сервер недоступен ({e}), загружаю из файлов...")
@@ -405,6 +427,28 @@ def _upload_embedding(person_id, emb):
         print(f"[face] ⚠ Не удалось сохранить эмбеддинг: {e}")
 
 
+def _refresh_notify_list():
+    """Обновляет список Telegram-оповещений с сервера (галочки в панели работают без рестарта)."""
+    global NOTIFY_NAMES, NOTIFY_FIO
+    try:
+        resp = requests.get(f"{EMBEDDINGS_URL}/notify-list", timeout=5)
+        if resp.status_code != 200:
+            return
+        new_notify = set(_NOTIFY_NAMES_LOCAL)
+        new_fio = dict(NOTIFY_FIO)
+        for p in resp.json():
+            name = p.get("photoFilename") or ""
+            if not name:
+                continue
+            new_notify.add(name)
+            if p.get("fullName"):
+                new_fio[name] = p["fullName"]
+        NOTIFY_NAMES = new_notify
+        NOTIFY_FIO = new_fio
+    except Exception:
+        pass  # сервер недоступен — работаем со старым списком
+
+
 def _poll_new_faces():
     """
     Фоновый поток: каждые POLL_INTERVAL секунд проверяет сервер
@@ -412,6 +456,7 @@ def _poll_new_faces():
     """
     while True:
         time.sleep(POLL_INTERVAL)
+        _refresh_notify_list()
         try:
             resp = requests.get(f"{EMBEDDINGS_URL}/pending", timeout=5)
             if resp.status_code != 200:
@@ -488,9 +533,11 @@ def _send_notify_webhook(name: str, confidence: float, camera_name: str):
         return
     _notify_last_sent[name] = now
 
+    # В сообщении — ФИО как в панели, а не имя файла фото
+    display_name = NOTIFY_FIO.get(name, name)
     payload = {
         "chat_id": NOTIFY_CHAT_IDS,
-        "message": f"Обнаружен: {name} (сходство {confidence:.2f}) — камера {camera_name}"
+        "message": f"Обнаружен: {display_name} (сходство {confidence:.2f}) — камера {camera_name}"
     }
     try:
         resp = requests.post(NOTIFY_WEBHOOK_URL, json=payload, timeout=5)

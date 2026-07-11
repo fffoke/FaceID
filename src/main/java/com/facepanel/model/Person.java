@@ -36,6 +36,11 @@ public class Person {
     @Column(name = "face_embedding", columnDefinition = "bytea")
     private byte[] faceEmbedding;
 
+    // Отправлять уведомление в Telegram при распознавании этого человека
+    @Column(name = "notify_telegram", columnDefinition = "boolean not null default false")
+    @Builder.Default
+    private boolean notifyTelegram = false;
+
     @Column(nullable = false, updatable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();

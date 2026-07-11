@@ -39,6 +39,8 @@ public class KppController {
         model.addAttribute("cameraName", camera != null ? camera.getName() : name);
         model.addAttribute("building", camera != null ? camera.getBuilding() : null);
         model.addAttribute("hasStream", camera != null && camera.getStreamUrl() != null && !camera.getStreamUrl().isBlank());
+        // Все камеры — для переключателя между КПП
+        model.addAttribute("cameras", cameraRepository.findAllByOrderByBuildingAscNameAsc());
         return "kpp_camera";
     }
 
