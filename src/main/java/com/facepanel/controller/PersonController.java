@@ -107,7 +107,13 @@ public class PersonController {
             // Получаем существующую персону из базы данных
             Person existingPerson = personService.findById(person.getId())
                     .orElseThrow(() -> new RuntimeException("Персона не найдена"));
-            
+
+            // Служебные скрытые поля — не приходят из формы, сохраняем из БД
+            if (person.getGender() == null || person.getGender().isBlank()) {
+                person.setGender(existingPerson.getGender());
+            }
+            person.setHiddenForIsmal(existingPerson.isHiddenForIsmal());
+
             // Обрабатываем загрузку нового файла
             if (photoFile != null && !photoFile.isEmpty()) {
                 String filename = savePhotoFile(photoFile, person);

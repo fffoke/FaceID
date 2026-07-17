@@ -131,6 +131,8 @@
                   enctype="multipart/form-data">
 
                 <input type="hidden" th:field="*{id}" th:if="${person.id != null}">
+                <!-- Пол определяется автоматически по отчеству на сервере, в UI не отображается -->
+                <input type="hidden" th:field="*{gender}">
 
                 <div class="form-group">
                     <label for="firstName">Имя <span class="required">*</span></label>

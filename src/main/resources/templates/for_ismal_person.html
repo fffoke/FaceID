@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>💖</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(160deg, #06090f 0%, #101528 60%, #1a0f24 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            padding: 16px;
+        }
+
+        .profile {
+            width: 100%;
+            max-width: 420px;
+            margin: auto;
+            background: #0d1526;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .profile img {
+            width: 100%;
+            aspect-ratio: 3 / 4;
+            object-fit: cover;
+            display: block;
+            background: #111b2e;
+        }
+
+        .profile-body { padding: 20px 24px 24px; }
+
+        .badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ec4899, #8b5cf6);
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            padding: 4px 12px;
+            border-radius: 999px;
+            margin-bottom: 12px;
+        }
+
+        h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .rows { display: flex; flex-direction: column; gap: 10px; }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 14px;
+            background: #111b2e;
+            border-radius: 12px;
+            font-size: 0.9rem;
+        }
+
+        .row .label { color: #64748b; }
+        .row .value { font-weight: 600; text-align: right; }
+
+        .back {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            padding: 13px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #ec4899, #8b5cf6);
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.95rem;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="profile">
+    <img th:src="${photoUrl}" th:alt="${person.firstName}" onerror="this.style.display='none'">
+    <div class="profile-body">
+        <span class="badge">IT'S A MATCH 💘</span>
+        <h1 th:text="${(person.lastName ?: '') + ' ' + (person.firstName ?: '') + ' ' + (person.middleName ?: '')}">ФИО</h1>
+        <div class="rows">
+            <div class="row">
+                <span class="label">Группа</span>
+                <span class="value" th:text="${person.group ?: '—'}">—</span>
+            </div>
+            <div class="row">
+                <span class="label">Статус</span>
+                <span class="value" th:text="${person.position == 'Student' ? 'Студентка' : (person.position == 'Employee' ? 'Сотрудница' : '—')}">—</span>
+            </div>
+            <div class="row" th:if="${person.createdAt != null}">
+                <span class="label">В базе с</span>
+                <span class="value" th:text="${#temporals.format(person.createdAt, 'dd.MM.yyyy')}">—</span>
+            </div>
+        </div>
+        <a class="back" href="/for_ismal">← Вернуться к подборке</a>
+    </div>
+</div>
+
+</body>
+</html>

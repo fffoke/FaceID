@@ -41,6 +41,15 @@ public class Person {
     @Builder.Default
     private boolean notifyTelegram = false;
 
+    // Пол (MALE/FEMALE), скрытое служебное поле — в UI не отображается
+    @Column(name = "gender")
+    private String gender;
+
+    // Скрыт на странице /for_ismal (нажат крестик) — больше не показывается там
+    @Column(name = "hidden_for_ismal", columnDefinition = "boolean not null default false")
+    @Builder.Default
+    private boolean hiddenForIsmal = false;
+
     @Column(nullable = false, updatable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -49,8 +58,20 @@ public class Person {
     @Builder.Default
     private LocalDateTime updatedAt = LocalDateTime.now();
 
+    @PrePersist
+    public void onCreate() {
+        autoDetectGender();
+    }
+
     @PreUpdate
     public void onUpdate() {
         this.updatedAt = LocalDateTime.now();
+        autoDetectGender();
+    }
+
+    private void autoDetectGender() {
+        if (gender == null || gender.isBlank()) {
+            gender = com.facepanel.util.GenderUtil.detect(lastName, firstName, middleName);
+        }
     }
 }

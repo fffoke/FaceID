@@ -13,4 +13,6 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
     List<Person> findByUpdatedAtAfter(LocalDateTime since);
     Optional<Person> findByFirstNameAndLastNameAndMiddleName(String firstName, String lastName, String middleName);
     Optional<Person> findByFirstNameAndLastName(String firstName, String lastName);
+    List<Person> findByGenderIsNull();
+    List<Person> findByGenderAndHiddenForIsmalFalse(String gender);
 }

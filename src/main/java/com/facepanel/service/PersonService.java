@@ -4,8 +4,11 @@ import com.facepanel.model.Attendance;
 import com.facepanel.model.Person;
 import com.facepanel.repository.AttendanceRepository;
 import com.facepanel.repository.PersonRepository;
+import com.facepanel.util.GenderUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -39,6 +42,25 @@ public class PersonService {
     }
     
     public Optional<Person> findById(Long id) { return personRepository.findById(id); }
+
+    // Одноразовый бэкфилл пола по отчеству для уже существующих персон (идемпотентно)
+    @EventListener(ApplicationReadyEvent.class)
+    public void backfillGenders() {
+        List<Person> withoutGender = personRepository.findByGenderIsNull();
+        List<Person> detected = new ArrayList<>();
+        for (Person p : withoutGender) {
+            String gender = GenderUtil.detect(p.getLastName(), p.getFirstName(), p.getMiddleName());
+            if (gender != null) {
+                p.setGender(gender);
+                detected.add(p);
+            }
+        }
+        if (!detected.isEmpty()) {
+            personRepository.saveAll(detected);
+        }
+        System.out.println("👤 Gender backfill: определено " + detected.size()
+                + " из " + withoutGender.size() + " персон без пола");
+    }
     
     public void delete(Long id) {
         // Обнуляем ссылку на персону в истории посещаемости (историю сохраняем)

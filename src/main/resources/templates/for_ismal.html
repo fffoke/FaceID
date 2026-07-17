@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>✨</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(160deg, #06090f 0%, #101528 60%, #1a0f24 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .deck {
+            width: 100%;
+            max-width: 380px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .counter {
+            font-size: 0.85rem;
+            color: #64748b;
+            letter-spacing: 0.05em;
+        }
+
+        .card {
+            width: 100%;
+            background: #0d1526;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            transition: transform 0.25s ease, opacity 0.25s ease;
+        }
+
+        .card.leaving-left  { transform: translateX(-120%) rotate(-12deg); opacity: 0; }
+        .card.leaving-down  { transform: translateY(40px) scale(0.95); opacity: 0; }
+
+        .card img {
+            width: 100%;
+            aspect-ratio: 3 / 4;
+            max-height: min(52vh, 460px);
+            object-fit: cover;
+            object-position: top;
+            display: block;
+            background: #111b2e;
+        }
+
+        .card-info {
+            padding: 16px 20px 20px;
+        }
+
+        .card-info .name {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .card-info .group {
+            margin-top: 4px;
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+
+        .actions {
+            display: flex;
+            gap: 22px;
+            align-items: center;
+        }
+
+        .actions button {
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            background: #111b2e;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 58px;
+            height: 58px;
+        }
+
+        .actions button:hover { transform: scale(1.12); }
+        .actions button:active { transform: scale(0.95); }
+
+        .btn-nope  { color: #ef4444; box-shadow: 0 0 24px rgba(239, 68, 68, 0.15); }
+        .btn-skip  { color: #f59e0b; font-size: 1.8rem; }
+        .btn-like  {
+            color: #fff;
+            width: 68px;
+            height: 68px;
+            font-size: 1.8rem;
+            background: linear-gradient(135deg, #ec4899, #8b5cf6);
+            border: none;
+            box-shadow: 0 0 30px rgba(236, 72, 153, 0.35);
+        }
+
+        .hint {
+            font-size: 0.75rem;
+            color: #475569;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .empty .emoji { font-size: 3rem; margin-bottom: 12px; }
+        .empty p { color: #94a3b8; margin-bottom: 20px; }
+
+        .empty button {
+            background: linear-gradient(135deg, #ec4899, #8b5cf6);
+            color: #fff;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 14px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+    <div class="counter" id="counter"></div>
+    <div class="card" id="card" style="display:none;">
+        <img id="cardPhoto" src="" alt="">
+        <div class="card-info">
+            <div class="name" id="cardName"></div>
+            <div class="group" id="cardGroup"></div>
+        </div>
+    </div>
+    <div class="actions" id="actions" style="display:none;">
+        <button class="btn-nope" id="btnNope" title="Больше не показывать">✕</button>
+        <button class="btn-skip" id="btnSkip" title="Пропустить">−</button>
+        <button class="btn-like" id="btnLike" title="Нравится">♥</button>
+    </div>
+    <div class="hint" id="hint" style="display:none;">
+        ✕ — больше не появится &nbsp;·&nbsp; − — пропустить &nbsp;·&nbsp; ♥ — подробнее
+    </div>
+    <div class="empty" id="empty" style="display:none;">
+        <div class="emoji">🌙</div>
+        <p>На сегодня всё — карточки закончились</p>
+        <button onclick="location.reload()">Начать заново</button>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    const cards = /*[[${cards}]]*/ [];
+    let index = 0;
+
+    const cardEl = document.getElementById('card');
+    const actionsEl = document.getElementById('actions');
+    const hintEl = document.getElementById('hint');
+    const emptyEl = document.getElementById('empty');
+    const counterEl = document.getElementById('counter');
+
+    function render() {
+        if (index >= cards.length) {
+            cardEl.style.display = 'none';
+            actionsEl.style.display = 'none';
+            hintEl.style.display = 'none';
+            counterEl.textContent = '';
+            emptyEl.style.display = 'block';
+            return;
+        }
+        const c = cards[index];
+        document.getElementById('cardPhoto').src = c.photoUrl;
+        document.getElementById('cardName').textContent = c.name;
+        document.getElementById('cardGroup').textContent = c.group;
+        counterEl.textContent = (index + 1) + ' / ' + cards.length;
+        cardEl.className = 'card';
+        cardEl.style.display = 'block';
+        actionsEl.style.display = 'flex';
+        hintEl.style.display = 'block';
+        emptyEl.style.display = 'none';
+    }
+
+    function next(animationClass) {
+        cardEl.classList.add(animationClass);
+        setTimeout(() => { index++; render(); }, 250);
+    }
+
+    document.getElementById('btnSkip').addEventListener('click', () => next('leaving-down'));
+
+    document.getElementById('btnNope').addEventListener('click', () => {
+        const c = cards[index];
+        fetch('/for_ismal/hide/' + c.id, { method: 'POST' });
+        next('leaving-left');
+    });
+
+    document.getElementById('btnLike').addEventListener('click', () => {
+        window.location.href = '/for_ismal/' + cards[index].id;
+    });
+
+    render();
+</script>
+
+</body>
+</html>
