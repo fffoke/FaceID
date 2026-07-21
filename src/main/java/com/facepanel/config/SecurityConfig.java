@@ -43,7 +43,7 @@ public class SecurityConfig {
                         .permitAll()
                 )
                 .csrf(csrf -> csrf
-                        .ignoringRequestMatchers("/ws/**", "/api/**", "/persons/delete-bulk", "/persons/import", "/for_ismal/**")
+                        .ignoringRequestMatchers("/ws/**", "/api/**", "/persons/delete-bulk", "/persons/import", "/for_ismail/**")
                 );
 
         return http.build();

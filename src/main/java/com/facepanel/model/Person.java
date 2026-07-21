@@ -45,7 +45,7 @@ public class Person {
     @Column(name = "gender")
     private String gender;
 
-    // Скрыт на странице /for_ismal (нажат крестик) — больше не показывается там
+    // Скрыт на странице /for_ismail (нажат крестик) — больше не показывается там
     @Column(name = "hidden_for_ismal", columnDefinition = "boolean not null default false")
     @Builder.Default
     private boolean hiddenForIsmal = false;

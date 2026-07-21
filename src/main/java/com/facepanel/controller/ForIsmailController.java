@@ -16,13 +16,13 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Скрытая страница — навигация только по прямому URL /for_ismal.
+ * Скрытая страница — навигация только по прямому URL /for_ismail.
  * Ссылок на неё в меню нет.
  */
 @Controller
 @RequiredArgsConstructor
-@RequestMapping("/for_ismal")
-public class ForIsmalController {
+@RequestMapping("/for_ismail")
+public class ForIsmailController {
 
     private final PersonRepository personRepository;
     private final PersonService personService;
@@ -45,7 +45,7 @@ public class ForIsmalController {
                 .collect(Collectors.toList());
 
         model.addAttribute("cards", cards);
-        return "for_ismal";
+        return "for_ismail";
     }
 
     @GetMapping("/{id}")
@@ -54,11 +54,11 @@ public class ForIsmalController {
                 .filter(p -> GenderUtil.FEMALE.equals(p.getGender()))
                 .orElse(null);
         if (person == null) {
-            return "redirect:/for_ismal";
+            return "redirect:/for_ismail";
         }
         model.addAttribute("person", person);
         model.addAttribute("photoUrl", photoUrl(person));
-        return "for_ismal_person";
+        return "for_ismail_person";
     }
 
     @PostMapping("/hide/{id}")

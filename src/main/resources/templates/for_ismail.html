@@ -201,12 +201,12 @@
 
     document.getElementById('btnNope').addEventListener('click', () => {
         const c = cards[index];
-        fetch('/for_ismal/hide/' + c.id, { method: 'POST' });
+        fetch('/for_ismail/hide/' + c.id, { method: 'POST' });
         next('leaving-left');
     });
 
     document.getElementById('btnLike').addEventListener('click', () => {
-        window.location.href = '/for_ismal/' + cards[index].id;
+        window.location.href = '/for_ismail/' + cards[index].id;
     });
 
     render();
