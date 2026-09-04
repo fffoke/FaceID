@@ -257,10 +257,9 @@
 
         <!-- Живое видео с распознаванием (проксируется панелью, если у камеры указан Stream URL) -->
         <div class="video-card" th:if="${hasStream}">
-            <img th:src="@{/kpp/stream/{n}(n=${cameraName})}" alt="Видеопоток камеры" id="video-stream"
-                onerror="this.style.display='none'; document.getElementById('video-offline').style.display='block';">
+            <img alt="Видеопоток камеры" id="video-stream" th:attr="data-stream-base=@{/kpp/stream/{n}(n=${cameraName})}">
             <div class="video-offline" id="video-offline" style="display: none;">
-                Видеопоток недоступен — проверьте, что Python-клиент камеры запущен (stream_port в settings.json)
+                Видеопоток недоступен — переподключаюсь...
             </div>
         </div>
 
@@ -341,6 +340,38 @@
             while (feedEl.children.length > MAX_FEED_ITEMS) {
                 feedEl.removeChild(feedEl.lastChild);
             }
+        }
+
+        // --- Видеопоток: MJPEG через <img> держит одно долгоживущее соединение
+        // и сам никогда не переподключается. Если оно где-то оборвётся (сетевой
+        // глитч, рестарт python-клиента, таймаут прокси) — картинка застынет
+        // навсегда без ошибки. Поэтому переоткрываем поток по таймеру и при onerror.
+        const videoStreamEl = document.getElementById('video-stream');
+        const videoOfflineEl = document.getElementById('video-offline');
+        const STREAM_REFRESH_MS = 20000; // плановое переподключение — «на всякий случай»
+        const STREAM_RETRY_MS = 3000;    // повтор при ошибке
+
+        if (videoStreamEl) {
+            const streamBase = videoStreamEl.getAttribute('data-stream-base');
+            let refreshTimer = null;
+
+            function reloadStream() {
+                videoStreamEl.src = streamBase + '?t=' + Date.now();
+            }
+
+            videoStreamEl.addEventListener('load', function () {
+                videoStreamEl.style.display = '';
+                videoOfflineEl.style.display = 'none';
+            });
+
+            videoStreamEl.addEventListener('error', function () {
+                videoStreamEl.style.display = 'none';
+                videoOfflineEl.style.display = 'block';
+                setTimeout(reloadStream, STREAM_RETRY_MS);
+            });
+
+            reloadStream();
+            refreshTimer = setInterval(reloadStream, STREAM_REFRESH_MS);
         }
 
         function connectWs() {

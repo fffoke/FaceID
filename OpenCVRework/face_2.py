@@ -549,15 +549,27 @@ def _send_notify_webhook(name: str, confidence: float, camera_name: str):
         print(f"❌ Ошибка webhook: {e}")
 
 
+_ESP_RETRIES = 3          # 1 попытка + 2 повтора
+_ESP_RETRY_DELAY = 0.3    # сек между попытками — ESP-модуль иногда на короткое время отваливается от WiFi
+
+
 def _open_turnstile():
-    """Открывает турникет через ESP. Вызывается в отдельном потоке — не ждёт сервер."""
+    """Открывает турникет через ESP. Вызывается в отдельном потоке — не ждёт сервер.
+    ESP-модуль на турникете периодически на доли секунды отваливается от WiFi,
+    поэтому при неудаче делаем ещё пару быстрых попыток, прежде чем сдаться."""
     if ESP == '':
         return
-    try:
-        res = requests.get(ESP, timeout=1.5)
-        print(f'🚪 ESP ответила: {res.status_code}')
-    except Exception as e:
-        print(f"❌ Ошибка ESP: {e}")
+    last_err = None
+    for attempt in range(1, _ESP_RETRIES + 1):
+        try:
+            res = requests.get(ESP, timeout=1.5)
+            print(f'🚪 ESP ответила: {res.status_code}' + (f' (попытка {attempt})' if attempt > 1 else ''))
+            return
+        except Exception as e:
+            last_err = e
+            if attempt < _ESP_RETRIES:
+                time.sleep(_ESP_RETRY_DELAY)
+    print(f"❌ Ошибка ESP после {_ESP_RETRIES} попыток: {last_err}")
 
 
 def _send_recognition_impl(name: str, confidence: float, camera_name: str):
