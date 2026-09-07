@@ -17,10 +17,12 @@ MAX_FAILED_READS = 30
 # старта КПП показывал прошлое. probesize/analyzeduration убирают probe,
 # nobuffer+low_delay — очередь. CAP_PROP_BUFFERSIZE бэкенд FFMPEG молча
 # игнорирует (читается как 0), поэтому буфер задаётся только этими опциями.
+# allowed_media_types;video — камеры отдают ещё и звуковую дорожку (PCMU),
+# которая нам не нужна: так её RTP-поток даже не запрашивается.
 FFMPEG_OPTIONS = (
     "rtsp_transport;tcp|fflags;nobuffer|flags;low_delay"
     "|probesize;32|analyzeduration;0|max_delay;0"
-    "|reorder_queue_size;0|stimeout;5000000"
+    "|reorder_queue_size;0|allowed_media_types;video|stimeout;5000000"
 )
 
 
