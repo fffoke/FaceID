@@ -549,27 +549,68 @@ def _send_notify_webhook(name: str, confidence: float, camera_name: str):
         print(f"❌ Ошибка webhook: {e}")
 
 
-_ESP_RETRIES = 3          # 1 попытка + 2 повтора
-_ESP_RETRY_DELAY = 0.3    # сек между попытками — ESP-модуль иногда на короткое время отваливается от WiFi
+# Бюджет на открытие турникета. ESP8266 держит одно TCP-соединение за раз и,
+# пока крутит реле, просто не принимает connect — отсюда ConnectTimeout.
+# Раньше было 3 попытки с connect-таймаутом 1.5с: модуль сдавался за ~5с,
+# человек ждал дебаунс распознавания (3с) и всё повторялось — отсюда «стою 10 секунд».
+_ESP_BUDGET = 4.0          # сек на все попытки открыть
+_ESP_CONNECT_TIMEOUT = 0.4 # ESP в локалке, ping 11-55мс — ждать 1.5с бессмысленно
+_ESP_READ_TIMEOUT = 2.0    # ответ приходит после срабатывания реле
+_ESP_RETRY_DELAY = 0.15    # пауза между попытками при обрыве
+_ESP_BUSY_DELAY = 0.5      # пауза, когда ESP ответила 429 (слишком часто дёргаем)
+
+# Пока одна попытка открытия в работе, остальные не лезут: параллельные потоки
+# добивали единственный сокет ESP и сами себе устраивали шторм отказов.
+_esp_lock = threading.Lock()
 
 
 def _open_turnstile():
     """Открывает турникет через ESP. Вызывается в отдельном потоке — не ждёт сервер.
-    ESP-модуль на турникете периодически на доли секунды отваливается от WiFi,
-    поэтому при неудаче делаем ещё пару быстрых попыток, прежде чем сдаться."""
+
+    Повторяет попытки, пока не выйдет бюджет: ESP отваливается от WiFi на доли
+    секунды и отвечает 429, если её дёргать чаще ~2с. Возвращает True при успехе.
+    """
     if ESP == '':
-        return
-    last_err = None
-    for attempt in range(1, _ESP_RETRIES + 1):
-        try:
-            res = requests.get(ESP, timeout=1.5)
-            print(f'🚪 ESP ответила: {res.status_code}' + (f' (попытка {attempt})' if attempt > 1 else ''))
-            return
-        except Exception as e:
-            last_err = e
-            if attempt < _ESP_RETRIES:
+        return False
+
+    # Открытие уже идёт — второй запрос не нужен, турникет откроет текущий поток
+    if not _esp_lock.acquire(blocking=False):
+        print("🚪 ESP: открытие уже выполняется, пропускаю дубль")
+        return False
+
+    try:
+        deadline = time.time() + _ESP_BUDGET
+        attempt = 0
+        last_err = None
+
+        while time.time() < deadline:
+            attempt += 1
+            try:
+                res = requests.get(ESP, timeout=(_ESP_CONNECT_TIMEOUT, _ESP_READ_TIMEOUT))
+
+                if res.status_code == 429:
+                    # Не успех: реле не сработало, ESP просит подождать
+                    last_err = "429 (слишком частые запросы)"
+                    time.sleep(_ESP_BUSY_DELAY)
+                    continue
+
+                suffix = f' (попытка {attempt})' if attempt > 1 else ''
+                if 200 <= res.status_code < 300:
+                    print(f'🚪 ESP ответила: {res.status_code}{suffix}')
+                    return True
+
+                # 403/404 и прочее — повторять бессмысленно, проблема в URL или токене
+                print(f'❌ ESP отказала: {res.status_code}{suffix} ({ESP})')
+                return False
+
+            except requests.RequestException as e:
+                last_err = e
                 time.sleep(_ESP_RETRY_DELAY)
-    print(f"❌ Ошибка ESP после {_ESP_RETRIES} попыток: {last_err}")
+
+        print(f"❌ Турникет не открылся за {_ESP_BUDGET}с, попыток: {attempt}. Последняя ошибка: {last_err}")
+        return False
+    finally:
+        _esp_lock.release()
 
 
 def _send_recognition_impl(name: str, confidence: float, camera_name: str):
@@ -623,10 +664,18 @@ _MAX_FAILED_READS = 30
 def _open_capture(cap_source):
     """Открывает VideoCapture с нужными параметрами."""
     if CAMERA_URL and CAMERA_URL.startswith(("rtsp://", "http://", "https://")):
-        # Уменьшаем внутренние буферы FFmpeg для экономии RAM
-        os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|buffer_size;65536|max_delay;100000|stimeout;5000000"
+        # Режим минимальной задержки. Со старыми опциями FFmpeg тратил 15с на
+        # probe потока и накапливал ~13с устаревшего видео в очереди демуксера —
+        # после каждого старта/переподключения КПП показывал прошлое.
+        # probesize/analyzeduration убирают probe, nobuffer+low_delay — очередь.
+        # CAP_PROP_BUFFERSIZE бэкенд FFMPEG молча игнорирует (читается как 0),
+        # поэтому размер буфера задаётся только через эти опции.
+        os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = (
+            "rtsp_transport;tcp|fflags;nobuffer|flags;low_delay"
+            "|probesize;32|analyzeduration;0|max_delay;0"
+            "|reorder_queue_size;0|stimeout;5000000"
+        )
         cap = cv.VideoCapture(cap_source, cv.CAP_FFMPEG)
-        cap.set(cv.CAP_PROP_BUFFERSIZE, 1)
     else:
         cap = cv.VideoCapture(cap_source)
         cap.set(cv.CAP_PROP_FRAME_WIDTH, PROCESS_WIDTH)
