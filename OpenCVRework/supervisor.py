@@ -104,6 +104,9 @@ def reconcile(state: dict) -> dict:
         # Панель лежит — это не повод глушить работающие камеры
         return state
 
+    # Работаем на копии: иначе вызывающий сравнивал бы словарь сам с собой
+    # и состояние никогда не попадало бы на диск
+    state = dict(state)
     running = active_units()
 
     for slug, updated_at in cameras.items():
