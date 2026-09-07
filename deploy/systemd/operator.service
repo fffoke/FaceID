@@ -1,0 +1,15 @@
+[Unit]
+Description=Operator Panel Java App
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+User=opencv
+WorkingDirectory=/home/opencv/project
+ExecStart=/usr/bin/java -jar /home/opencv/project/operator-panel-0.0.1-SNAPSHOT.jar
+SuccessExitStatus=143
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

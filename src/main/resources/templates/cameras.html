@@ -110,6 +110,58 @@
                 align-items: flex-start;
             }
         }
+
+        .camera-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .chip {
+            font-size: 0.72rem;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-secondary);
+            font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+
+        .camera-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .ok-banner {
+            background: rgba(52, 199, 89, 0.12);
+            color: #34c759;
+            padding: 10px 16px;
+            border-radius: var(--radius-md);
+            margin-bottom: 16px;
+            font-size: 0.9rem;
+        }
+
+        .hint {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin: -4px 0 12px;
+        }
+
+        .add-form.editing {
+            border-color: var(--accent);
+        }
+
+        @media (max-width: 768px) {
+            .camera-actions {
+                width: 100%;
+            }
+
+            .camera-actions .btn {
+                flex: 1;
+            }
+        }
     </style>
 </head>
 
@@ -121,37 +173,71 @@
         <div class="card">
             <h1>Камеры</h1>
 
-            <div class="error-banner" th:if="${param.error}">
-                Камера с таким названием уже существует (или название пустое)
+            <div class="error-banner" th:if="${param.error != null and param.error[0] == 'duplicate'}">
+                Камера с таким названием уже существует
+            </div>
+            <div class="error-banner" th:if="${param.error != null and param.error[0] == 'empty'}">
+                Название камеры не может быть пустым
+            </div>
+            <div class="error-banner" th:if="${param.error != null and param.error[0] == 'notfound'}">
+                Камера не найдена — возможно, её удалили в другой вкладке
+            </div>
+            <div class="ok-banner" th:if="${param.ok != null and param.ok[0] == 'added'}">
+                Камера добавлена. Процесс распознавания поднимется в течение минуты.
+            </div>
+            <div class="ok-banner" th:if="${param.ok != null and param.ok[0] == 'saved'}">
+                Изменения сохранены. Процесс камеры перезапустится с новыми параметрами в течение минуты.
+            </div>
+            <div class="ok-banner" th:if="${param.ok != null and param.ok[0] == 'deleted'}">
+                Камера удалена, её процесс остановлен.
             </div>
 
-            <!-- Добавление камеры -->
-            <div class="add-form">
-                <h2>Добавить камеру</h2>
-                <form method="post" th:action="@{/cameras/add}">
+            <!-- Добавление / редактирование -->
+            <div class="add-form" th:classappend="${editing != null} ? 'editing'">
+                <h2 th:text="${editing != null} ? 'Редактировать камеру' : 'Добавить камеру'">Добавить камеру</h2>
+                <form method="post"
+                      th:action="${editing != null} ? @{/cameras/edit/{id}(id=${editing.id})} : @{/cameras/add}">
                     <div class="form-grid">
                         <div>
                             <label for="name">Название камеры *</label>
-                            <input type="text" id="name" name="name" placeholder="Например: KPP1" required>
+                            <input type="text" id="name" name="name" required
+                                   th:value="${editing != null} ? ${editing.name} : ''"
+                                   placeholder="Например: KPP1 или Главный вход">
                         </div>
                         <div>
                             <label for="building">Корпус</label>
-                            <input type="text" id="building" name="building" placeholder="Например: Главный корпус">
+                            <input type="text" id="building" name="building"
+                                   th:value="${editing != null} ? ${editing.building} : ''"
+                                   placeholder="Например: Главный корпус">
                         </div>
                         <div>
                             <label for="cameraUrl">Camera URL (RTSP/HTTP)</label>
-                            <input type="text" id="cameraUrl" name="cameraUrl" placeholder="rtsp://user:pass@192.168.1.10:554/stream">
+                            <input type="text" id="cameraUrl" name="cameraUrl"
+                                   th:value="${editing != null} ? ${editing.cameraUrl} : ''"
+                                   placeholder="rtsp://192.168.1.10:554/stream">
                         </div>
                         <div>
                             <label for="espUrl">ESP URL (турникет)</label>
-                            <input type="text" id="espUrl" name="espUrl" placeholder="http://192.168.1.50/open">
+                            <input type="text" id="espUrl" name="espUrl"
+                                   th:value="${editing != null} ? ${editing.espUrl} : ''"
+                                   placeholder="http://192.168.1.50/open">
                         </div>
                         <div>
-                            <label for="streamUrl">Stream URL (видео в браузере)</label>
-                            <input type="text" id="streamUrl" name="streamUrl" placeholder="http://85.92.122.161:8090/stream">
+                            <label for="streamUrl">Stream URL — только если клиент на другой машине</label>
+                            <input type="text" id="streamUrl" name="streamUrl"
+                                   th:value="${editing != null} ? ${editing.streamUrl} : ''"
+                                   placeholder="оставьте пустым">
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary">Добавить</button>
+                    <p class="hint">
+                        Название можно писать по-русски. Порт стрима назначается сам, начиная с 8090 —
+                        заполняйте Stream URL, только если Python-клиент запущен не на этом сервере.
+                    </p>
+                    <div class="camera-actions">
+                        <button type="submit" class="btn btn-primary"
+                                th:text="${editing != null} ? 'Сохранить' : 'Добавить'">Добавить</button>
+                        <a th:if="${editing != null}" th:href="@{/cameras}" class="btn">Отмена</a>
+                    </div>
                 </form>
             </div>
 
@@ -170,21 +256,31 @@
                         <div class="camera-urls" th:if="${camera.espUrl != null and camera.espUrl != ''}">
                             <span>ESP:</span> <span th:text="${camera.espUrl}">http://...</span>
                         </div>
-                        <div class="camera-urls" th:if="${camera.streamUrl != null and camera.streamUrl != ''}">
-                            <span>Stream:</span> <span th:text="${camera.streamUrl}">http://...</span>
+                        <div class="camera-urls">
+                            <span>Stream:</span>
+                            <span th:text="${camera.resolveStreamUrl() != null} ? ${camera.resolveStreamUrl()} : 'не задан'">http://...</span>
+                        </div>
+                        <div class="camera-meta">
+                            <span class="chip" th:text="'slug: ' + ${camera.slug}">slug: kpp1</span>
+                            <span class="chip" th:text="'порт: ' + ${camera.streamPort}">порт: 8090</span>
+                            <span class="chip" th:text="'юнит: face@' + ${camera.slug}">юнит: face@kpp1</span>
                         </div>
                     </div>
-                    <form method="post" th:action="@{/cameras/delete/{id}(id=${camera.id})}">
-                        <button type="submit" class="btn btn-danger btn-small"
-                            onclick="return confirm('Удалить камеру?')">Удалить</button>
-                    </form>
+                    <div class="camera-actions">
+                        <a th:href="@{/kpp/{n}(n=${camera.slug})}" class="btn btn-small">Экран КПП</a>
+                        <a th:href="@{/cameras(edit=${camera.id})}" class="btn btn-small">Редактировать</a>
+                        <form method="post" th:action="@{/cameras/delete/{id}(id=${camera.id})}">
+                            <button type="submit" class="btn btn-danger btn-small"
+                                onclick="return confirm('Удалить камеру? Её процесс распознавания будет остановлен.')">Удалить</button>
+                        </form>
+                    </div>
                 </div>
             </div>
 
             <div th:if="${cameras == null or cameras.isEmpty()}" class="empty-state">
                 <div class="empty-icon">&#x1F4F9;</div>
                 <h3>Нет камер</h3>
-                <p>Добавьте первую камеру — её название должно совпадать с camera_name Python-клиента</p>
+                <p>Добавьте первую камеру — процесс распознавания для неё запустится автоматически</p>
             </div>
         </div>
     </main>

@@ -1,0 +1,18 @@
+# Приводит запущенные процессы камер в соответствие с реестром панели.
+# Именно он превращает «создал камеру в админке» в работающий процесс.
+[Unit]
+Description=FacePanel camera supervisor
+After=network.target operator.service
+Wants=operator.service
+
+[Service]
+User=opencv
+WorkingDirectory=/home/opencv/project/OpenCVRework
+ExecStart=/home/opencv/project/OpenCVRework/venv/bin/python -u supervisor.py
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONIOENCODING=utf-8
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target

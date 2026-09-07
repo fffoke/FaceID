@@ -250,14 +250,14 @@
 
         <!-- Переключатель между камерами -->
         <div class="kpp-switcher" th:if="${cameras != null and #lists.size(cameras) > 1}">
-            <a th:each="cam : ${cameras}" th:href="@{/kpp/{n}(n=${cam.name})}"
+            <a th:each="cam : ${cameras}" th:href="@{/kpp/{n}(n=${cam.slug})}"
                 class="kpp-btn" th:classappend="${cam.name == cameraName} ? 'active'"
                 th:text="${cam.name}">KPP1</a>
         </div>
 
         <!-- Живое видео с распознаванием (проксируется панелью, если у камеры указан Stream URL) -->
         <div class="video-card" th:if="${hasStream}">
-            <img alt="Видеопоток камеры" id="video-stream" th:attr="data-stream-base=@{/kpp/stream/{n}(n=${cameraName})}">
+            <img alt="Видеопоток камеры" id="video-stream" th:attr="data-stream-base=@{/kpp/stream/{n}(n=${cameraKey})}">
             <div class="video-offline" id="video-offline" style="display: none;">
                 Видеопоток недоступен — переподключаюсь...
             </div>

@@ -1,0 +1,23 @@
+# Шаблонный юнит: один файл на все камеры. %i — slug камеры из реестра панели.
+#   systemctl enable --now face@kpp1
+# RTSP-адрес, ESP турникета и порт стрима клиент забирает с сервера по этому slug,
+# поэтому в юните их нет и правятся они на странице /cameras.
+[Unit]
+Description=FacePanel camera %i
+After=network.target operator.service
+Wants=operator.service
+
+[Service]
+User=opencv
+WorkingDirectory=/home/opencv/project/OpenCVRework
+ExecStart=/home/opencv/project/OpenCVRework/venv/bin/python -u face_2.py --camera-name %i --no-window
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONIOENCODING=utf-8
+# Клиент выходит с кодом 0, если камера не открылась на старте, — always (а не
+# on-failure) поднимает его снова, иначе недоступная при ребуте камера осталась
+# бы мёртвой навсегда
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

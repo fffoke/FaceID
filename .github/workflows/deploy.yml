@@ -35,9 +35,18 @@ jobs:
           scp -i ~/.ssh/deploy_key -P ${{ secrets.SERVER_PORT }} \
             target/operator-panel-0.0.1-SNAPSHOT.jar \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/home/opencv/project/operator-panel-0.0.1-SNAPSHOT.jar.new
-          scp -i ~/.ssh/deploy_key -P ${{ secrets.SERVER_PORT }} \
-            OpenCVRework/face_2.py \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/home/opencv/project/OpenCVRework/face_2.py.new
+          # Клиент камеры теперь не один файл, а пакет facecore/ рядом с точкой входа.
+          # Кладём во временный каталог и переносим одним движением, чтобы работающие
+          # процессы не увидели полуобновлённый код.
+          ssh -i ~/.ssh/deploy_key -p ${{ secrets.SERVER_PORT }} \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            'rm -rf /home/opencv/project/OpenCVRework/.incoming && mkdir -p /home/opencv/project/OpenCVRework/.incoming'
+          scp -i ~/.ssh/deploy_key -P ${{ secrets.SERVER_PORT }} -r \
+            OpenCVRework/face_2.py OpenCVRework/supervisor.py OpenCVRework/facecore \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/home/opencv/project/OpenCVRework/.incoming/
+          scp -i ~/.ssh/deploy_key -P ${{ secrets.SERVER_PORT }} -r \
+            deploy/systemd \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/home/opencv/project/OpenCVRework/.incoming/
 
       - name: Deploy & restart services
         run: |
@@ -51,18 +60,29 @@ jobs:
           ls -t operator-panel-0.0.1-SNAPSHOT.jar.bak-* 2>/dev/null | tail -n +4 | xargs -r rm --
 
           mv operator-panel-0.0.1-SNAPSHOT.jar.new operator-panel-0.0.1-SNAPSHOT.jar
-          mv OpenCVRework/face_2.py.new OpenCVRework/face_2.py
+
+          # Код клиента камеры — одним движением
+          cd /home/opencv/project/OpenCVRework
+          rm -rf facecore
+          cp -r .incoming/facecore facecore
+          cp .incoming/face_2.py face_2.py
+          cp .incoming/supervisor.py supervisor.py
+          rm -rf .incoming __pycache__ facecore/__pycache__
+          cd /home/opencv/project
 
           sudo /usr/bin/systemctl restart operator.service
           sleep 8
           systemctl is-active operator.service
 
-          # Камеры: рестарт не критичен для деплоя панели
-          sudo /usr/bin/systemctl restart face-kpp1.service || true
-          sudo /usr/bin/systemctl restart face-kpp2.service || true
+          # Камеры: рестарт не критичен для деплоя панели.
+          # Супервизор сам поднимет face@<slug> под каждую камеру из реестра.
+          sudo /usr/bin/systemctl restart face-supervisor.service || true
+          for unit in $(systemctl list-units --type=service --all --no-legend --plain 'face@*.service' | awk '{print $1}'); do
+            sudo /usr/bin/systemctl restart "$unit" || true
+          done
           sleep 3
-          echo "face-kpp1: $(systemctl is-active face-kpp1.service)"
-          echo "face-kpp2: $(systemctl is-active face-kpp2.service)"
+          echo "face-supervisor: $(systemctl is-active face-supervisor.service)"
+          systemctl list-units --type=service --no-legend --plain 'face@*.service' || true
           DEPLOY
 
       - name: Health check

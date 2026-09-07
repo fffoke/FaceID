@@ -1,7 +1,7 @@
 package com.facepanel.controller;
 
 import com.facepanel.model.Camera;
-import com.facepanel.repository.CameraRepository;
+import com.facepanel.service.CameraService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -16,14 +16,16 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CameraController {
 
-    private final CameraRepository cameraRepository;
+    private final CameraService cameraService;
 
     // ===== Страница управления камерами =====
 
     @GetMapping("/cameras")
-    public String view(Model model) {
-        List<Camera> cameras = cameraRepository.findAllByOrderByBuildingAscNameAsc();
-        model.addAttribute("cameras", cameras);
+    public String view(@RequestParam(required = false) Long edit, Model model) {
+        model.addAttribute("cameras", cameraService.findAll());
+        model.addAttribute("editing", edit != null
+                ? cameraService.findAll().stream().filter(c -> c.getId().equals(edit)).findFirst().orElse(null)
+                : null);
         return "cameras";
     }
 
@@ -33,44 +35,63 @@ public class CameraController {
                       @RequestParam(required = false) String cameraUrl,
                       @RequestParam(required = false) String espUrl,
                       @RequestParam(required = false) String streamUrl) {
-        String trimmedName = name.trim();
-        if (trimmedName.isEmpty() || cameraRepository.findByNameIgnoreCase(trimmedName).isPresent()) {
+        if (name == null || name.trim().isEmpty()) {
+            return "redirect:/cameras?error=empty";
+        }
+        if (cameraService.isNameTaken(name.trim(), null)) {
             return "redirect:/cameras?error=duplicate";
         }
+        cameraService.create(name, building, cameraUrl, espUrl, streamUrl);
+        return "redirect:/cameras?ok=added";
+    }
 
-        Camera camera = Camera.builder()
-                .name(trimmedName)
-                .building(building != null ? building.trim() : null)
-                .cameraUrl(cameraUrl != null ? cameraUrl.trim() : null)
-                .espUrl(espUrl != null ? espUrl.trim() : null)
-                .streamUrl(streamUrl != null ? streamUrl.trim() : null)
-                .build();
-        cameraRepository.save(camera);
-
-        return "redirect:/cameras";
+    @PostMapping("/cameras/edit/{id}")
+    public String edit(@PathVariable Long id,
+                       @RequestParam String name,
+                       @RequestParam(required = false) String building,
+                       @RequestParam(required = false) String cameraUrl,
+                       @RequestParam(required = false) String espUrl,
+                       @RequestParam(required = false) String streamUrl) {
+        Camera camera = cameraService.findAll().stream()
+                .filter(c -> c.getId().equals(id)).findFirst().orElse(null);
+        if (camera == null) {
+            return "redirect:/cameras?error=notfound";
+        }
+        if (name == null || name.trim().isEmpty()) {
+            return "redirect:/cameras?edit=" + id + "&error=empty";
+        }
+        if (cameraService.isNameTaken(name.trim(), id)) {
+            return "redirect:/cameras?edit=" + id + "&error=duplicate";
+        }
+        cameraService.update(camera, name, building, cameraUrl, espUrl, streamUrl);
+        // updatedAt изменился — супервизор увидит это и перезапустит процесс камеры
+        return "redirect:/cameras?ok=saved";
     }
 
     @PostMapping("/cameras/delete/{id}")
     public String delete(@PathVariable Long id) {
-        cameraRepository.deleteById(id);
-        return "redirect:/cameras";
+        cameraService.delete(id);
+        return "redirect:/cameras?ok=deleted";
     }
 
-    // ===== REST API для Python-клиентов (/api/v1/cameras) =====
+    // ===== REST API для Python-клиентов и супервизора (/api/v1/cameras) =====
 
     @GetMapping("/api/v1/cameras")
     @ResponseBody
     public List<Map<String, Object>> apiList() {
-        return cameraRepository.findAllByOrderByBuildingAscNameAsc().stream()
+        return cameraService.findAll().stream()
                 .map(this::toApiMap)
                 .collect(Collectors.toList());
     }
 
-    // Python-клиент получает свою конфигурацию (camera_url, esp_url) по имени камеры
-    @GetMapping("/api/v1/cameras/{name}")
+    /**
+     * Конфигурация одной камеры. Ключ — slug (так стартует Python-клиент)
+     * либо отображаемое имя.
+     */
+    @GetMapping("/api/v1/cameras/{key}")
     @ResponseBody
-    public ResponseEntity<?> apiByName(@PathVariable String name) {
-        return cameraRepository.findByNameIgnoreCase(name)
+    public ResponseEntity<?> apiByKey(@PathVariable String key) {
+        return cameraService.find(key)
                 .map(camera -> ResponseEntity.ok(toApiMap(camera)))
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -79,10 +100,13 @@ public class CameraController {
         Map<String, Object> map = new java.util.HashMap<>();
         map.put("id", camera.getId());
         map.put("name", camera.getName());
+        map.put("slug", camera.getSlug());
         map.put("building", camera.getBuilding());
         map.put("cameraUrl", camera.getCameraUrl());
         map.put("espUrl", camera.getEspUrl());
-        map.put("streamUrl", camera.getStreamUrl());
+        map.put("streamPort", camera.getStreamPort());
+        map.put("streamUrl", camera.resolveStreamUrl());
+        map.put("updatedAt", camera.getUpdatedAt() != null ? camera.getUpdatedAt().toString() : null);
         return map;
     }
 }

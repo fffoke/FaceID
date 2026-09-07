@@ -27,7 +27,7 @@
             padding: 12px 16px;
             border-radius: var(--radius-md);
             display: grid;
-            grid-template-columns: 70px 1fr 100px 100px 120px 1fr;
+            grid-template-columns: 70px 1fr 100px 100px 110px 120px 1fr;
             gap: 16px;
             align-items: center;
             transition: all var(--transition);
@@ -132,9 +132,63 @@
             white-space: nowrap;
         }
 
+        /* display:grid у .log-item перебивает атрибут hidden — возвращаем ему силу */
+        .log-item[hidden] {
+            display: none !important;
+        }
+
+        .log-building {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .log-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin: 12px 0 16px;
+        }
+
+        .log-filters select {
+            padding: 6px 10px;
+            border-radius: var(--radius-md);
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            font-size: 0.85rem;
+            min-width: 150px;
+        }
+
+        .filter-count {
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            margin-left: auto;
+        }
+
+        .filter-empty {
+            padding: 24px;
+            text-align: center;
+            color: var(--text-dim);
+        }
+
+        @media (max-width: 600px) {
+            .log-filters select {
+                flex: 1 1 100%;
+                min-width: 0;
+            }
+
+            .filter-count {
+                margin-left: 0;
+            }
+        }
+
         .log-header {
             display: grid;
-            grid-template-columns: 70px 1fr 100px 100px 120px 1fr;
+            grid-template-columns: 70px 1fr 100px 100px 110px 120px 1fr;
             gap: 16px;
             padding: 0 16px 12px;
             color: var(--text-dim);
@@ -154,11 +208,13 @@
             }
 
             .log-camera,
+            .log-building,
             .log-session,
             .log-group,
             .log-header span:nth-child(4),
             .log-header span:nth-child(5),
-            .log-header span:nth-child(6) {
+            .log-header span:nth-child(6),
+            .log-header span:nth-child(7) {
                 display: none;
             }
         }
@@ -173,17 +229,32 @@
         <div class="card">
             <h1>Логи распознавания</h1>
 
+            <div class="log-filters">
+                <select id="filter-building" aria-label="Фильтр по корпусу">
+                    <option value="">Все корпуса</option>
+                    <option th:each="b : ${buildings}" th:value="${b}" th:text="${b}">Корпус</option>
+                </select>
+                <select id="filter-camera" aria-label="Фильтр по камере">
+                    <option value="">Все камеры</option>
+                    <option th:each="cam : ${cameras}" th:value="${cam.name}"
+                            th:attr="data-building=${cam.building}" th:text="${cam.name}">KPP1</option>
+                </select>
+                <span class="filter-count" id="filter-count"></span>
+            </div>
+
             <div class="log-header">
                 <span>Время</span>
                 <span>Персона</span>
                 <span>Событие</span>
                 <span>Камера</span>
+                <span>Корпус</span>
                 <span>Мероприятие</span>
                 <span>Группа</span>
             </div>
 
             <div id="logs-container">
-                <div th:each="log : ${logs}" class="log-item" th:id="'log-' + ${log.id}">
+                <div th:each="log : ${logs}" class="log-item" th:id="'log-' + ${log.id}"
+                    th:attr="data-camera=${log.cameraName},data-building=${buildingByCamera[log.cameraName]}">
                     <div class="log-time" th:text="${#temporals.format(log.timestamp, 'HH:mm:ss')}">12:34:56</div>
                     <div class="log-person-info">
                         <div class="log-person-image"
@@ -204,11 +275,17 @@
                     <div class="log-camera"
                         th:text="${log.cameraName != null && log.cameraName != '' ? log.cameraName : 'Unknown'}">KPP1
                     </div>
+                    <div class="log-building"
+                        th:text="${buildingByCamera[log.cameraName] != null ? buildingByCamera[log.cameraName] : '—'}">
+                        Корпус</div>
                     <div class="log-session" th:text="${log.session != null ? log.session.name : 'Без мероприятия'}">
                         Мероприятие</div>
                     <div class="log-group"
                         th:text="${log.person != null and log.person.group != null ? log.person.group : 'Без группы'}">
                         Группа</div>
+                </div>
+                <div class="filter-empty" id="filter-empty" style="display: none;">
+                    Под выбранный фильтр записей нет
                 </div>
             </div>
         </div>
@@ -302,21 +379,88 @@
             cameraDiv.className = 'log-camera';
             cameraDiv.textContent = msg.cameraName || 'Unknown';
 
+            const buildingDiv = document.createElement('div');
+            buildingDiv.className = 'log-building';
+            buildingDiv.textContent = msg.building || '\u2014';
+
             const sessionDiv = document.createElement('div');
             sessionDiv.className = 'log-session';
             sessionDiv.textContent = msg.sessionName || 'Без мероприятия';
+
+            // Данные для фильтра — строка должна фильтроваться так же, как отрисованные сервером
+            logElement.setAttribute('data-camera', msg.cameraName || '');
+            logElement.setAttribute('data-building', msg.building || '');
 
             logElement.appendChild(timeDiv);
             logElement.appendChild(personInfoDiv);
             logElement.appendChild(eventDiv);
             logElement.appendChild(cameraDiv);
+            logElement.appendChild(buildingDiv);
             logElement.appendChild(sessionDiv);
             logElement.appendChild(groupDiv);
 
             logsContainer.insertBefore(logElement, logsContainer.firstChild);
+            applyFilters();
 
             setTimeout(() => { logElement.classList.remove('new'); }, 2000);
         }
+
+        // --- Фильтры по корпусу и камере ---
+        // Фильтруем на клиенте: строки приходят и от сервера, и живьём по WebSocket,
+        // так что единая функция применяется к тем и другим.
+        const buildingSelect = document.getElementById('filter-building');
+        const cameraSelect = document.getElementById('filter-camera');
+        const countEl = document.getElementById('filter-count');
+        const emptyEl = document.getElementById('filter-empty');
+
+        function applyFilters() {
+            const building = buildingSelect.value;
+            const camera = cameraSelect.value;
+            const rows = document.querySelectorAll('#logs-container .log-item');
+            let shown = 0;
+
+            rows.forEach(row => {
+                const rowCamera = row.getAttribute('data-camera') || '';
+                const rowBuilding = row.getAttribute('data-building') || '';
+                const matches = (!building || rowBuilding === building)
+                             && (!camera || rowCamera === camera);
+                row.hidden = !matches;
+                if (matches) shown++;
+            });
+
+            countEl.textContent = rows.length
+                ? (shown === rows.length ? shown + ' записей' : shown + ' из ' + rows.length)
+                : '';
+            emptyEl.style.display = (rows.length && shown === 0) ? 'block' : 'none';
+        }
+
+        // Выбор корпуса оставляет в списке камер только его камеры
+        function syncCameraOptions() {
+            const building = buildingSelect.value;
+            let selectionStillVisible = !cameraSelect.value;
+
+            Array.from(cameraSelect.options).forEach(option => {
+                if (!option.value) return;
+                const visible = !building || option.getAttribute('data-building') === building;
+                option.hidden = !visible;
+                if (visible && option.value === cameraSelect.value) {
+                    selectionStillVisible = true;
+                }
+            });
+
+            if (!selectionStillVisible) {
+                cameraSelect.value = '';
+            }
+        }
+
+        buildingSelect.addEventListener('change', () => {
+            syncCameraOptions();
+            applyFilters();
+        });
+        cameraSelect.addEventListener('change', applyFilters);
+
+        syncCameraOptions();
+        applyFilters();
 
         connect();
     </script>

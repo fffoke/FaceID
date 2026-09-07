@@ -1,17 +1,18 @@
 {
     "show_window": false,
     "threshold": 0.6,
-    "gpu_enabled": true,
     "camera_index": 0,
     "camera_url": "",
-    "camera_name": "KPP1",
+    "camera_name": "",
     "min_frames_between_events": 3,
     "server_url": "http://127.0.0.1:8080/api/v1/recognitions",
     "active_session_url": "http://127.0.0.1:8080/api/v1/active-session",
     "cameras_url": "http://127.0.0.1:8080/api/v1/cameras",
+    "embeddings_url": "http://127.0.0.1:8080/api/v1/embeddings",
     "esp_url": "",
-    "stream_port": 8090,
+    "stream_port": 0,
     "faces_dir": "../faces",
     "target_fps": 10,
-    "cv_threads": 2
+    "cv_threads": 2,
+    "poll_interval": 10
 }

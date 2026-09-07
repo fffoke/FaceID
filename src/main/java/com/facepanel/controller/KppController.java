@@ -1,7 +1,7 @@
 package com.facepanel.controller;
 
 import com.facepanel.model.Camera;
-import com.facepanel.repository.CameraRepository;
+import com.facepanel.service.CameraService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -19,7 +19,7 @@ import java.net.URLConnection;
 @RequiredArgsConstructor
 public class KppController {
 
-    private final CameraRepository cameraRepository;
+    private final CameraService cameraService;
 
     @GetMapping("/login")
     public String login() {
@@ -28,19 +28,21 @@ public class KppController {
 
     @GetMapping("/kpp")
     public String kpp(Model model) {
-        model.addAttribute("cameras", cameraRepository.findAllByOrderByBuildingAscNameAsc());
+        model.addAttribute("cameras", cameraService.findAll());
         return "kpp";
     }
 
     // Полноэкранный монитор одной камеры (как прежние /kpp1, /kpp2)
-    @GetMapping("/kpp/{name}")
-    public String kppCamera(@PathVariable String name, Model model) {
-        Camera camera = cameraRepository.findByNameIgnoreCase(name).orElse(null);
-        model.addAttribute("cameraName", camera != null ? camera.getName() : name);
+    @GetMapping("/kpp/{key}")
+    public String kppCamera(@PathVariable String key, Model model) {
+        Camera camera = cameraService.find(key).orElse(null);
+        // В URL и в стриме ходит slug, на экране — отображаемое имя (может быть кириллицей)
+        model.addAttribute("cameraName", camera != null ? camera.getName() : key);
+        model.addAttribute("cameraKey", camera != null ? camera.getSlug() : key);
         model.addAttribute("building", camera != null ? camera.getBuilding() : null);
-        model.addAttribute("hasStream", camera != null && camera.getStreamUrl() != null && !camera.getStreamUrl().isBlank());
+        model.addAttribute("hasStream", camera != null && camera.resolveStreamUrl() != null);
         // Все камеры — для переключателя между КПП
-        model.addAttribute("cameras", cameraRepository.findAllByOrderByBuildingAscNameAsc());
+        model.addAttribute("cameras", cameraService.findAll());
         return "kpp_camera";
     }
 
@@ -48,15 +50,16 @@ public class KppController {
      * Прокси MJPEG-стрима через панель: браузеру достаточно доступа к порту 8080,
      * порты Python-клиентов (8090/8091) наружу открывать не нужно.
      */
-    @GetMapping("/kpp/stream/{name}")
-    public void proxyStream(@PathVariable String name, HttpServletResponse response) throws IOException {
-        Camera camera = cameraRepository.findByNameIgnoreCase(name).orElse(null);
-        if (camera == null || camera.getStreamUrl() == null || camera.getStreamUrl().isBlank()) {
+    @GetMapping("/kpp/stream/{key}")
+    public void proxyStream(@PathVariable String key, HttpServletResponse response) throws IOException {
+        Camera camera = cameraService.find(key).orElse(null);
+        String streamUrl = camera != null ? camera.resolveStreamUrl() : null;
+        if (streamUrl == null) {
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
             return;
         }
 
-        URLConnection upstream = new URL(camera.getStreamUrl()).openConnection();
+        URLConnection upstream = new URL(streamUrl).openConnection();
         upstream.setConnectTimeout(3000);
         upstream.setReadTimeout(15000);
 

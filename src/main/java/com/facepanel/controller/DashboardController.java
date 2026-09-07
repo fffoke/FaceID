@@ -3,6 +3,7 @@ package com.facepanel.controller;
 import com.facepanel.model.Person;
 import com.facepanel.model.Attendance;
 import com.facepanel.service.AttendanceService;
+import com.facepanel.service.CameraService;
 import com.facepanel.service.PersonService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -21,6 +22,7 @@ public class DashboardController {
 
     private final PersonService personService;
     private final AttendanceService attendanceService;
+    private final CameraService cameraService;
 
     @GetMapping("/")
     public String dashboard(Model model) {
@@ -36,6 +38,10 @@ public class DashboardController {
         
         model.addAttribute("logs", todayLogs);
         model.addAttribute("personService", personService);
+        // Для колонки «Корпус» и выпадающих фильтров над логами
+        model.addAttribute("cameras", cameraService.findAll());
+        model.addAttribute("buildings", cameraService.buildings());
+        model.addAttribute("buildingByCamera", cameraService.buildingByCameraName());
         return "dashboard";
     }
 }

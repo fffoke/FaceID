@@ -22,6 +22,7 @@ public class AttendanceService {
     private final SessionRepository sessionRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final PersonService personService;
+    private final CameraService cameraService;
 
     /**
      * Сохранить факт распознавания.
@@ -98,6 +99,9 @@ public class AttendanceService {
         payload.put("sessionId", session != null ? session.getId() : null);
         payload.put("sessionName", session != null ? session.getName() : "Без мероприятия");
         payload.put("cameraName", saved.getCameraName());
+        // Корпус приходит из реестра камер — в самой записи его нет
+        payload.put("building", cameraService.find(saved.getCameraName())
+                .map(com.facepanel.model.Camera::getBuilding).orElse(null));
 
 
         // broadcast to topic

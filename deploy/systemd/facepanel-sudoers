@@ -1,0 +1,14 @@
+# Права супервизора на управление юнитами камер.
+# Установка:
+#   sudo install -m 0440 -o root -g root facepanel-sudoers /etc/sudoers.d/facepanel
+#   sudo visudo -c
+opencv ALL=(root) NOPASSWD: /usr/bin/systemctl daemon-reload
+opencv ALL=(root) NOPASSWD: /usr/bin/systemctl restart operator.service
+opencv ALL=(root) NOPASSWD: /usr/bin/systemctl restart face-supervisor.service
+opencv ALL=(root) NOPASSWD: /usr/bin/systemctl start face@*.service
+opencv ALL=(root) NOPASSWD: /usr/bin/systemctl stop face@*.service
+opencv ALL=(root) NOPASSWD: /usr/bin/systemctl restart face@*.service
+opencv ALL=(root) NOPASSWD: /usr/bin/systemctl enable face@*.service
+opencv ALL=(root) NOPASSWD: /usr/bin/systemctl disable face@*.service
+opencv ALL=(root) NOPASSWD: /usr/bin/systemctl enable --now face@*.service
+opencv ALL=(root) NOPASSWD: /usr/bin/systemctl disable --now face@*.service

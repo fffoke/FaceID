@@ -201,11 +201,11 @@
         <div class="kpp-grid" id="kpp-grid">
             <div th:each="cam : ${cameras}" class="camera-card" th:attr="data-camera=${cam.name}">
                 <div class="camera-card-header">
-                    <a class="camera-card-title" th:href="@{/kpp/{n}(n=${cam.name})}"
+                    <a class="camera-card-title" th:href="@{/kpp/{n}(n=${cam.slug})}"
                         th:text="${cam.name}" style="color: var(--text-primary);">KPP1</a>
                     <span class="building-tag" th:if="${cam.building != null and cam.building != ''}"
                         th:text="${cam.building}">Корпус</span>
-                    <a class="camera-open-link" th:href="@{/kpp/{n}(n=${cam.name})}">Открыть &rarr;</a>
+                    <a class="camera-open-link" th:href="@{/kpp/{n}(n=${cam.slug})}">Открыть &rarr;</a>
                 </div>
                 <div class="cam-status idle">
                     <div class="cam-status-title">Ожидание</div>

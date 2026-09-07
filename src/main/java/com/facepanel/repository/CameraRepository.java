@@ -8,5 +8,7 @@ import java.util.Optional;
 
 public interface CameraRepository extends JpaRepository<Camera, Long> {
     Optional<Camera> findByNameIgnoreCase(String name);
+    Optional<Camera> findBySlugIgnoreCase(String slug);
     List<Camera> findAllByOrderByBuildingAscNameAsc();
+    List<Camera> findAllByOrderByNameAsc();
 }
