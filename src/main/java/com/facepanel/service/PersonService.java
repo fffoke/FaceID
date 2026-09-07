@@ -72,6 +72,17 @@ public class PersonService {
         notifyPersonUpdate("PERSON_DELETED", Map.of("id", id));
     }
     
+    /**
+     * Участники группы целиком, независимо от фильтров на странице.
+     * Пустая строка означает псевдогруппу «Без группы».
+     */
+    public List<Person> findByGroup(String group) {
+        if (group == null || group.trim().isEmpty()) {
+            return personRepository.findWithoutGroup();
+        }
+        return personRepository.findByGroup(group.trim());
+    }
+
     public List<Person> getFilteredPersons(List<Person> persons, String search, String group, String position, String dateFrom, String dateTo) {
         return persons.stream()
                 .filter(person -> {

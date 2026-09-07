@@ -261,15 +261,47 @@ public class PersonController {
         if (ids == null || ids.isEmpty()) {
             return ResponseEntity.badRequest().body("Список ID пуст");
         }
-        for (Long id : ids) {
-            Person person = personService.findById(id).orElse(null);
-            if (person != null) {
-                if (person.getPhotoFilename() != null && !person.getPhotoFilename().isEmpty()) {
-                    deleteOldPhotoFile(person.getPhotoFilename());
-                }
-                personService.delete(id);
-            }
+        int deleted = deletePersons(ids.stream()
+                .map(id -> personService.findById(id).orElse(null))
+                .filter(java.util.Objects::nonNull)
+                .toList());
+        return ResponseEntity.ok(Map.of("deleted", deleted));
+    }
+
+    /**
+     * Удаляет группу целиком — всех её участников, а не только показанных
+     * текущим фильтром. Пустое имя означает псевдогруппу «Без группы».
+     */
+    @PostMapping("/delete-group")
+    @ResponseBody
+    public ResponseEntity<?> deleteGroup(@RequestBody Map<String, String> body) {
+        if (body == null || !body.containsKey("group")) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Не указана группа"));
         }
-        return ResponseEntity.ok().build();
+        String group = body.get("group");
+
+        List<Person> members = personService.findByGroup(group);
+        if (members.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "В группе никого нет"));
+        }
+
+        String label = (group == null || group.trim().isEmpty()) ? "Без группы" : group.trim();
+        int deleted = deletePersons(members);
+        System.out.println("🗑 Удалена группа '" + label + "': персон " + deleted);
+
+        return ResponseEntity.ok(Map.of("deleted", deleted, "group", label));
+    }
+
+    /** Общий путь удаления: фото с диска, затем сама персона (история посещений сохраняется). */
+    private int deletePersons(List<Person> persons) {
+        int deleted = 0;
+        for (Person person : persons) {
+            if (person.getPhotoFilename() != null && !person.getPhotoFilename().isEmpty()) {
+                deleteOldPhotoFile(person.getPhotoFilename());
+            }
+            personService.delete(person.getId());
+            deleted++;
+        }
+        return deleted;
     }
 }

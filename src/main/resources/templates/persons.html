@@ -98,6 +98,29 @@
 
         .group-header:hover { background: rgba(255, 255, 255, 0.03); }
 
+        .group-delete {
+            background: transparent;
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            padding: 4px 10px;
+            border-radius: var(--radius-md);
+            font-size: 0.75rem;
+            cursor: pointer;
+            white-space: nowrap;
+            opacity: 0.65;
+            transition: opacity var(--transition), background var(--transition);
+        }
+
+        .group-delete:hover {
+            opacity: 1;
+            background: rgba(255, 69, 58, 0.12);
+        }
+
+        .group-delete[disabled] {
+            opacity: 0.4;
+            cursor: wait;
+        }
+
         .group-name {
             font-size: 1rem;
             font-weight: 600;
@@ -376,6 +399,14 @@
                         <div class="group-name" th:text="${group.key}">Название группы</div>
                         <div style="display:flex;align-items:center;gap:10px;">
                             <div class="group-count" th:text="${group.value.size()} + ' чел.'">5 чел.</div>
+                            <!-- «Одиночные» — не настоящая группа, а сборная солянка из разных групп
+                                 по одному человеку, поэтому удалять её как группу нечего -->
+                            <button type="button" class="group-delete"
+                                    th:unless="${group.key == 'Одиночные'}"
+                                    th:attr="data-group=${group.key == 'Без группы' ? '' : group.key},
+                                             data-label=${group.key},
+                                             data-total=${group.key == 'Без группы' ? stats.noGroupCount : (stats.byGroup[group.key] != null ? stats.byGroup[group.key] : group.value.size())}"
+                                    onclick="deleteGroup(event, this)">Удалить группу</button>
                             <div class="group-toggle">&#9660;</div>
                         </div>
                     </div>
@@ -648,6 +679,50 @@
             selectedIds.clear();
             document.querySelectorAll('.person-card.selected').forEach(c => c.classList.remove('selected'));
             updateBulkPanel();
+        }
+
+        // Удаляет группу целиком — всех её участников, а не только показанных фильтром.
+        // Поэтому в подтверждении фигурирует настоящее число людей в группе.
+        async function deleteGroup(event, btn) {
+            event.stopPropagation();  // иначе клик свернёт/развернёт группу
+
+            // У псевдогруппы «Без группы» значение пустое, а Thymeleaf выбрасывает
+            // атрибуты с пустым значением — getAttribute вернёт null. Приводим к ''.
+            const group = btn.getAttribute('data-group') || '';
+            const label = btn.getAttribute('data-label');
+            const total = parseInt(btn.getAttribute('data-total'), 10) || 0;
+            const shown = btn.closest('.group-item').querySelectorAll('.person-card').length;
+
+            let message = `Удалить группу «${label}» — ${total} чел.?\n\nЭто действие необратимо. `
+                        + `Фотографии будут удалены, история посещений сохранится.`;
+            if (shown < total) {
+                message = `Внимание: на экране показано ${shown} из ${total} — остальных скрыл фильтр.\n\n`
+                        + `Удалить группу «${label}» целиком, все ${total} чел.?\n\n`
+                        + `Это действие необратимо.`;
+            }
+            if (!confirm(message)) return;
+
+            btn.disabled = true;
+            btn.textContent = 'Удаляю...';
+            try {
+                const resp = await fetch('/persons/delete-group', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ group })
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (resp.ok) {
+                    location.reload();
+                } else {
+                    alert('Не удалось удалить группу: ' + (data.error || resp.status));
+                    btn.disabled = false;
+                    btn.textContent = 'Удалить группу';
+                }
+            } catch (e) {
+                alert('Ошибка сети: ' + e.message);
+                btn.disabled = false;
+                btn.textContent = 'Удалить группу';
+            }
         }
 
         async function deleteSelected() {
