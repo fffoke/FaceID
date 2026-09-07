@@ -1,10 +1,13 @@
 package com.facepanel.service;
 
 import com.facepanel.model.Camera;
+import com.facepanel.repository.AttendanceRepository;
 import com.facepanel.repository.CameraRepository;
+import com.facepanel.repository.SessionRepository;
 import com.facepanel.util.TransliterationUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -22,6 +25,8 @@ public class CameraService {
     public static final int FIRST_STREAM_PORT = 8090;
 
     private final CameraRepository cameraRepository;
+    private final AttendanceRepository attendanceRepository;
+    private final SessionRepository sessionRepository;
 
     public List<Camera> findAll() {
         return cameraRepository.findAllByOrderByBuildingAscNameAsc();
@@ -124,13 +129,23 @@ public class CameraService {
         return cameraRepository.save(camera);
     }
 
+    @Transactional
     public Camera update(Camera camera, String name, String building, String cameraUrl, String espUrl, String streamUrl) {
         String newName = name.trim();
         // slug пересобираем только при смене имени: он зашит в имя systemd-юнита,
         // и его смена на ровном месте означала бы остановку старого юнита и запуск нового
         if (!newName.equals(camera.getName())) {
+            String oldName = camera.getName();
             camera.setName(newName);
             camera.setSlug(buildSlug(newName, camera.getId()));
+
+            // Имя камеры лежит в журнале посещений и в привязке мероприятий.
+            // Без переноса история осталась бы на старом имени: старые записи
+            // выпали бы из фильтра по камере, а мероприятие перестало бы её узнавать.
+            int movedLogs = attendanceRepository.renameCamera(oldName, newName);
+            int movedSessions = sessionRepository.renameCamera(oldName, newName);
+            System.out.println("📷 Камера '" + oldName + "' -> '" + newName
+                    + "': перенесено записей журнала " + movedLogs + ", мероприятий " + movedSessions);
         }
         camera.setBuilding(trimToNull(building));
         camera.setCameraUrl(trimToNull(cameraUrl));
