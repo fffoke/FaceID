@@ -25,6 +25,11 @@ public class Camera {
     @Column(name = "slug", unique = true)
     private String slug;
 
+    // Прежний slug после переименования. На мониторах КПП остаются открытые
+    // страницы со старым адресом — по нему камера должна находиться и дальше.
+    @Column(name = "previous_slug")
+    private String previousSlug;
+
     // Корпус, к которому относится камера
     @Column(name = "building")
     private String building;

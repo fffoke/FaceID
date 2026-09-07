@@ -101,6 +101,7 @@ public class CameraController {
         map.put("id", camera.getId());
         map.put("name", camera.getName());
         map.put("slug", camera.getSlug());
+        map.put("previousSlug", camera.getPreviousSlug());
         map.put("building", camera.getBuilding());
         map.put("cameraUrl", camera.getCameraUrl());
         map.put("espUrl", camera.getEspUrl());

@@ -1,11 +1,13 @@
 """MJPEG-стрим кадров с рамками распознавания — его забирает панель для экрана КПП."""
 
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import cv2 as cv
 
 JPEG_QUALITY = 70
+RETRY_DELAY = 3.0  # сек между попытками занять порт стрима
 
 
 class MjpegStream:
@@ -36,16 +38,34 @@ class MjpegStream:
             self._cond.notify_all()
 
     def start(self):
+        """
+        Поднимает HTTP-сервер стрима, повторяя попытки при занятом порте.
+
+        Порт освобождает предыдущий процесс этой же камеры — при переименовании
+        или перезапуске он может отпустить его на пару секунд позже. Раньше одна
+        неудачная попытка оставляла камеру вообще без видео до ручного рестарта,
+        хотя распознавание при этом работало и проблему было легко не заметить.
+        """
         if self.port <= 0:
             print("[stream] 📺 MJPEG-стрим выключен (порт не задан)")
             return
-        try:
-            stream = self
-            self._server = ThreadingHTTPServer(("0.0.0.0", self.port), _handler_factory(stream))
-            threading.Thread(target=self._server.serve_forever, daemon=True).start()
-            print(f"[stream] 📺 MJPEG-стрим запущен: http://0.0.0.0:{self.port}/stream")
-        except OSError as e:
-            print(f"[stream] ⚠ Не удалось запустить стрим на порту {self.port}: {e}")
+        threading.Thread(target=self._serve_with_retry, daemon=True).start()
+
+    def _serve_with_retry(self):
+        attempt = 0
+        while True:
+            attempt += 1
+            try:
+                self._server = ThreadingHTTPServer(("0.0.0.0", self.port), _handler_factory(self))
+                suffix = f" (попытка {attempt})" if attempt > 1 else ""
+                print(f"[stream] 📺 MJPEG-стрим запущен: http://0.0.0.0:{self.port}/stream{suffix}")
+                self._server.serve_forever()
+                return
+            except OSError as e:
+                if attempt == 1 or attempt % 10 == 0:
+                    print(f"[stream] ⚠ Порт {self.port} занят ({e}), жду освобождения... "
+                          f"(попытка {attempt})")
+                time.sleep(RETRY_DELAY)
 
 
 def _handler_factory(stream: MjpegStream):

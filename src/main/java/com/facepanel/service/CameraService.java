@@ -67,8 +67,15 @@ public class CameraService {
             return Optional.empty();
         }
         String trimmed = key.trim();
-        Optional<Camera> bySlug = cameraRepository.findBySlugIgnoreCase(trimmed);
-        return bySlug.isPresent() ? bySlug : cameraRepository.findByNameIgnoreCase(trimmed);
+        Optional<Camera> found = cameraRepository.findBySlugIgnoreCase(trimmed);
+        if (found.isEmpty()) {
+            found = cameraRepository.findByNameIgnoreCase(trimmed);
+        }
+        if (found.isEmpty()) {
+            // Открытая на мониторе КПП страница со старым адресом продолжает работать
+            found = cameraRepository.findByPreviousSlugIgnoreCase(trimmed);
+        }
+        return found;
     }
 
     /**
@@ -136,6 +143,7 @@ public class CameraService {
         // и его смена на ровном месте означала бы остановку старого юнита и запуск нового
         if (!newName.equals(camera.getName())) {
             String oldName = camera.getName();
+            camera.setPreviousSlug(camera.getSlug());
             camera.setName(newName);
             camera.setSlug(buildSlug(newName, camera.getId()));
 

@@ -36,11 +36,23 @@ public class KppController {
     @GetMapping("/kpp/{key}")
     public String kppCamera(@PathVariable String key, Model model) {
         Camera camera = cameraService.find(key).orElse(null);
+
+        // Камеры с таким адресом нет — уводим на список, а не показываем пустой
+        // экран с несуществующим названием в заголовке
+        if (camera == null) {
+            return "redirect:/kpp";
+        }
+        // Нашлись по прежнему адресу (камеру переименовали) — переводим монитор
+        // на новый, чтобы открытая страница сама переехала и показала новое имя
+        if (!key.equalsIgnoreCase(camera.getSlug())) {
+            return "redirect:/kpp/" + camera.getSlug();
+        }
+
         // В URL и в стриме ходит slug, на экране — отображаемое имя (может быть кириллицей)
-        model.addAttribute("cameraName", camera != null ? camera.getName() : key);
-        model.addAttribute("cameraKey", camera != null ? camera.getSlug() : key);
-        model.addAttribute("building", camera != null ? camera.getBuilding() : null);
-        model.addAttribute("hasStream", camera != null && camera.resolveStreamUrl() != null);
+        model.addAttribute("cameraName", camera.getName());
+        model.addAttribute("cameraKey", camera.getSlug());
+        model.addAttribute("building", camera.getBuilding());
+        model.addAttribute("hasStream", camera.resolveStreamUrl() != null);
         // Все камеры — для переключателя между КПП
         model.addAttribute("cameras", cameraService.findAll());
         return "kpp_camera";

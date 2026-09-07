@@ -109,6 +109,17 @@ def reconcile(state: dict) -> dict:
     state = dict(state)
     running = active_units()
 
+    # Сначала останавливаем лишние, только потом запускаем новые.
+    # При переименовании камеры новый slug наследует порт стрима старого,
+    # и если запустить новый юнит раньше — он не займёт порт и останется
+    # без видео, хотя распознавание при этом работает.
+    for slug in running - set(cameras):
+        unit = f"{UNIT_PREFIX}{slug}"
+        log(f"➖ камеры '{slug}' больше нет в реестре — останавливаю {unit}")
+        if systemctl("disable", "--now", f"{unit}.service"):
+            state.pop(slug, None)
+            running.discard(slug)
+
     for slug, updated_at in cameras.items():
         unit = f"{UNIT_PREFIX}{slug}"
         if slug not in running:
@@ -129,12 +140,6 @@ def reconcile(state: dict) -> dict:
             log(f"♻️ камера '{slug}' изменена в панели — перезапускаю {unit}")
             if systemctl("restart", f"{unit}.service"):
                 state[slug] = updated_at
-
-    for slug in running - set(cameras):
-        unit = f"{UNIT_PREFIX}{slug}"
-        log(f"➖ камеры '{slug}' больше нет в реестре — останавливаю {unit}")
-        if systemctl("disable", "--now", f"{unit}.service"):
-            state.pop(slug, None)
 
     return state
 
