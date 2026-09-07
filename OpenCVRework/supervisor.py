@@ -114,7 +114,15 @@ def reconcile(state: dict) -> dict:
                 state[slug] = updated_at
             continue
 
-        if state.get(slug) != updated_at:
+        if slug not in state:
+            # Юнит уже работает, а в состоянии его нет: это первый запуск супервизора
+            # или потерянный файл состояния. Перезапускать тут нечего — иначе потеря
+            # состояния разом гасила бы все камеры на проходной.
+            log(f"🔗 камера '{slug}' уже работает — беру под наблюдение без перезапуска")
+            state[slug] = updated_at
+            continue
+
+        if state[slug] != updated_at:
             log(f"♻️ камера '{slug}' изменена в панели — перезапускаю {unit}")
             if systemctl("restart", f"{unit}.service"):
                 state[slug] = updated_at
