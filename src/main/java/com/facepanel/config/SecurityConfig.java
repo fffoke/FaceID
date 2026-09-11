@@ -20,7 +20,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/kpp", "/kpp/**", "/kpp1", "/kpp2").permitAll()
+                        .requestMatchers("/", "/kpp", "/kpp/**", "/kpp1", "/kpp2").permitAll()
                         .requestMatchers("/css/**", "/js/**", "/img/**", "/login").permitAll()
                         .requestMatchers("/upload/faces/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
@@ -29,7 +29,7 @@ public class SecurityConfig {
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
-                        .defaultSuccessUrl("/", true)
+                        .defaultSuccessUrl("/dashboard", true)
                         .failureUrl("/login?error")
                         .usernameParameter("username")
                         .passwordParameter("password")

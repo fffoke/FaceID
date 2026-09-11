@@ -26,7 +26,8 @@ public class KppController {
         return "login";
     }
 
-    @GetMapping("/kpp")
+    // Стартовая страница — выбор КПП, доступна без авторизации
+    @GetMapping({"/", "/kpp"})
     public String kpp(Model model) {
         model.addAttribute("cameras", cameraService.findAll());
         return "kpp";

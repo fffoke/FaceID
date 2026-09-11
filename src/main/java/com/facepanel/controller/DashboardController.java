@@ -24,7 +24,8 @@ public class DashboardController {
     private final AttendanceService attendanceService;
     private final CameraService cameraService;
 
-    @GetMapping("/")
+    // "/" — публичная страница КПП, дашборд живёт отдельно (только после входа)
+    @GetMapping("/dashboard")
     public String dashboard(Model model) {
         // Получаем логи распознаваний за сегодня
         LocalDate today = LocalDate.now();

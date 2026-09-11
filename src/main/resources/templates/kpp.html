@@ -316,9 +316,13 @@
             stompClient.debug = null;
             const badge = document.getElementById('conn-badge');
 
+            const headerStatus = document.getElementById('connection-status');
+
             stompClient.connect({}, function () {
                 badge.textContent = 'Подключено';
                 badge.className = 'conn-badge ok';
+                headerStatus.innerHTML = '<span>Подключено</span>';
+                headerStatus.className = 'connection-status connected';
                 stompClient.subscribe('/topic/attendance', function (message) {
                     try {
                         showRecognition(JSON.parse(message.body));
@@ -327,6 +331,8 @@
             }, function () {
                 badge.textContent = 'Переподключение...';
                 badge.className = 'conn-badge';
+                headerStatus.innerHTML = '<span>Отключено</span>';
+                headerStatus.className = 'connection-status disconnected';
                 setTimeout(connectWs, 3000);
             });
         }

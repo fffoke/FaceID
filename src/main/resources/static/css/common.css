@@ -198,6 +198,16 @@ img { max-width: 100%; display: block; }
 
 .nav-button-kpp:hover { opacity: 1; }
 
+/* Кнопка входа — вместо меню, когда пользователь не авторизован */
+.nav-button-login {
+    margin-left: auto;
+    margin-right: 12px;
+    color: var(--accent-light);
+    background: var(--accent-subtle);
+    border: 1px solid var(--accent-border);
+    font-weight: 600;
+}
+
 .connection-status {
     padding: 5px 12px;
     border-radius: var(--radius-pill);

@@ -93,14 +93,16 @@ Units live in `deploy/systemd/`.
 
 ### Web pages
 
-- `/` — Dashboard with live attendance logs
+- `/` — public start page = checkpoint index (same as `/kpp`), "Войти" button in the header
+- `/dashboard` — Dashboard with live attendance logs (login redirects here)
 - `/session` — Session management (start/stop events)
 - `/session/history/{id}` — Past session details
 - `/persons` — Person CRUD with photo management
 - `/attendance` — Attendance history with date filtering
 - `/statistics` — Analytics with CSV export
 - `/cameras` — Camera registry CRUD
-- `/kpp` — Checkpoint index; `/kpp/{slug}` — single camera screen
+- `/kpp` — Checkpoint index; `/kpp/{slug}` — single camera screen. All `/kpp/**` and `/`
+  are open without login; the header shows the nav menu only to authenticated users
 - `/kpp/stream/{slug}` — MJPEG proxied from the Python client, so only port 8080
   needs to be reachable from tablets
 
