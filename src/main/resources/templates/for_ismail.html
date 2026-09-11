@@ -122,6 +122,8 @@
         .actions button:hover { transform: scale(1.12); }
         .actions button:active { transform: scale(0.95); }
 
+        .btn-undo  { color: #38bdf8; width: 46px !important; height: 46px !important; font-size: 1.3rem !important; }
+        .actions button:disabled { opacity: 0.3; cursor: default; transform: none; }
         .btn-nope  { color: #ef4444; box-shadow: 0 0 24px rgba(239, 68, 68, 0.15); }
         .btn-skip  { color: #f59e0b; font-size: 1.8rem; }
         .btn-like  {
@@ -159,6 +161,26 @@
             font-weight: 600;
             cursor: pointer;
         }
+
+        .empty .btn-secondary {
+            display: block;
+            margin: 12px auto 0;
+            background: #111b2e;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #94a3b8;
+        }
+
+        .restore-hidden {
+            background: none;
+            border: none;
+            color: #475569;
+            font-size: 0.8rem;
+            text-decoration: underline;
+            cursor: pointer;
+            padding: 8px;
+        }
+
+        .restore-hidden:hover { color: #94a3b8; }
     </style>
 </head>
 <body>
@@ -184,24 +206,33 @@
         </div>
     </div>
     <div class="actions" id="actions" style="display:none;">
+        <button class="btn-undo" id="btnUndo" title="Вернуть предыдущую" disabled>↺</button>
         <button class="btn-nope" id="btnNope" title="Больше не показывать">✕</button>
         <button class="btn-skip" id="btnSkip" title="Пропустить">−</button>
         <button class="btn-like" id="btnLike" title="Нравится">♥</button>
     </div>
     <div class="hint" id="hint" style="display:none;">
-        ✕ — больше не появится &nbsp;·&nbsp; − — пропустить &nbsp;·&nbsp; ♥ — подробнее
+        ↺ — вернуть предыдущую &nbsp;·&nbsp; ✕ — больше не появится &nbsp;·&nbsp; − — пропустить &nbsp;·&nbsp; ♥ — подробнее
     </div>
     <div class="empty" id="empty" style="display:none;">
         <div class="emoji">🌙</div>
         <p id="emptyText">На сегодня всё — карточки закончились</p>
         <button id="btnRestart" onclick="location.reload()">Начать заново</button>
+        <button class="btn-secondary" id="btnUndoEmpty">↺ Вернуть последнюю</button>
     </div>
+    <button class="restore-hidden" id="btnRestoreHidden" th:if="${countHidden > 0}">
+        Вернуть всех скрытых ✕ (<span th:text="${countHidden}">0</span>)
+    </button>
 </div>
 
 <script th:inline="javascript">
     const cards = /*[[${cards}]]*/ [];
     const deckType = /*[[${type}]]*/ 'all';
     let index = 0;
+    // Пролистанные карточки по порядку: hidden = true, если нажали ✕
+    const swiped = [];
+    // Блокирует повторный клик, пока карточка улетает
+    let busy = false;
 
     const cardEl = document.getElementById('card');
     const actionsEl = document.getElementById('actions');
@@ -210,6 +241,8 @@
     const counterEl = document.getElementById('counter');
 
     function render() {
+        document.getElementById('btnUndo').disabled = swiped.length === 0;
+        document.getElementById('btnUndoEmpty').style.display = swiped.length ? 'block' : 'none';
         if (index >= cards.length) {
             cardEl.style.display = 'none';
             actionsEl.style.display = 'none';
@@ -232,20 +265,58 @@
         actionsEl.style.display = 'flex';
         hintEl.style.display = 'block';
         emptyEl.style.display = 'none';
+        preload(index + 1, 3);
     }
 
-    function next(animationClass) {
+    // Фото следующих карточек грузим заранее, чтобы свайп не ждал сеть
+    const preloaded = new Set();
+    function preload(from, count) {
+        for (let i = from; i < Math.min(from + count, cards.length); i++) {
+            const url = cards[i].photoUrl;
+            if (url && !preloaded.has(url)) {
+                preloaded.add(url);
+                new Image().src = url;
+            }
+        }
+    }
+
+    function next(animationClass, hidden) {
+        if (busy || index >= cards.length) return;
+        busy = true;
+        swiped.push({ id: cards[index].id, hidden: hidden });
         cardEl.classList.add(animationClass);
-        setTimeout(() => { index++; render(); }, 250);
+        setTimeout(() => { index++; busy = false; render(); }, 250);
     }
 
-    document.getElementById('btnSkip').addEventListener('click', () => next('leaving-down'));
+    function undo() {
+        if (busy || swiped.length === 0) return;
+        const last = swiped.pop();
+        if (last.hidden) {
+            fetch('/for_ismail/unhide/' + last.id, { method: 'POST' });
+        }
+        index--;
+        render();
+    }
+
+    document.getElementById('btnSkip').addEventListener('click', () => next('leaving-down', false));
 
     document.getElementById('btnNope').addEventListener('click', () => {
-        const c = cards[index];
-        fetch('/for_ismail/hide/' + c.id, { method: 'POST' });
-        next('leaving-left');
+        if (busy || index >= cards.length) return;
+        fetch('/for_ismail/hide/' + cards[index].id, { method: 'POST' });
+        next('leaving-left', true);
     });
+
+    document.getElementById('btnUndo').addEventListener('click', undo);
+    document.getElementById('btnUndoEmpty').addEventListener('click', undo);
+
+    const restoreBtn = document.getElementById('btnRestoreHidden');
+    if (restoreBtn) {
+        restoreBtn.addEventListener('click', async () => {
+            if (!confirm('Вернуть в подборку всех, кого скрыли крестиком?')) return;
+            const res = await fetch('/for_ismail/unhide-all', { method: 'POST' });
+            if (res.ok) location.reload();
+        });
+    }
 
     document.getElementById('btnLike').addEventListener('click', () => {
         window.location.href = '/for_ismail/' + cards[index].id + '?type=' + deckType;

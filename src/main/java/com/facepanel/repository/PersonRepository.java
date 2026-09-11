@@ -2,7 +2,10 @@ package com.facepanel.repository;
 
 import com.facepanel.model.Person;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,6 +19,21 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
     Optional<Person> findByFirstNameAndLastName(String firstName, String lastName);
     List<Person> findByGenderIsNull();
     List<Person> findByGenderAndHiddenForIsmalFalse(String gender);
+    long countByGenderAndHiddenForIsmalTrue(String gender);
+
+    /**
+     * Флаг скрытия на /for_ismail меняем прямым UPDATE, без save():
+     * иначе @PreUpdate сдвинет updatedAt и камеры заново скачают эмбеддинги.
+     */
+    @Modifying
+    @Transactional
+    @Query("update Person p set p.hiddenForIsmal = :hidden where p.id = :id")
+    int setHiddenForIsmal(@Param("id") Long id, @Param("hidden") boolean hidden);
+
+    @Modifying
+    @Transactional
+    @Query("update Person p set p.hiddenForIsmal = false where p.hiddenForIsmal = true")
+    int unhideAllForIsmal();
 
     /** Все участники группы — для удаления группы целиком. */
     List<Person> findByGroup(String group);

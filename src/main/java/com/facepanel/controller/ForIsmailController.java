@@ -53,6 +53,7 @@ public class ForIsmailController {
         model.addAttribute("countAll", all.size());
         model.addAttribute("countStudent", all.stream().filter(p -> "Student".equals(p.getPosition())).count());
         model.addAttribute("countEmployee", all.stream().filter(p -> "Employee".equals(p.getPosition())).count());
+        model.addAttribute("countHidden", personRepository.countByGenderAndHiddenForIsmalTrue(GenderUtil.FEMALE));
 
         List<Map<String, Object>> cards = girls.stream()
                 .map(p -> Map.<String, Object>of(
@@ -86,13 +87,27 @@ public class ForIsmailController {
     @PostMapping("/hide/{id}")
     @ResponseBody
     public ResponseEntity<?> hide(@PathVariable Long id) {
-        return personRepository.findById(id)
-                .map(p -> {
-                    p.setHiddenForIsmal(true);
-                    personRepository.save(p);
-                    return ResponseEntity.ok().build();
-                })
-                .orElse(ResponseEntity.notFound().build());
+        return setHidden(id, true);
+    }
+
+    // Отмена ✕ для одной карточки (кнопка ↺)
+    @PostMapping("/unhide/{id}")
+    @ResponseBody
+    public ResponseEntity<?> unhide(@PathVariable Long id) {
+        return setHidden(id, false);
+    }
+
+    // Вернуть в подборку всех, кого когда-либо скрыли ✕
+    @PostMapping("/unhide-all")
+    @ResponseBody
+    public ResponseEntity<?> unhideAll() {
+        return ResponseEntity.ok(Map.of("restored", personRepository.unhideAllForIsmal()));
+    }
+
+    private ResponseEntity<?> setHidden(Long id, boolean hidden) {
+        return personRepository.setHiddenForIsmal(id, hidden) > 0
+                ? ResponseEntity.ok().build()
+                : ResponseEntity.notFound().build();
     }
 
     private String fullName(Person p) {
