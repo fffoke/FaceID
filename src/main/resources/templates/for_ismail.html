@@ -28,6 +28,32 @@
             gap: 20px;
         }
 
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .filters a {
+            padding: 8px 14px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: #111b2e;
+            color: #94a3b8;
+            font-size: 0.85rem;
+            text-decoration: none;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .filters a span { opacity: 0.6; margin-left: 2px; }
+
+        .filters a.active {
+            color: #fff;
+            border-color: transparent;
+            background: linear-gradient(135deg, #ec4899, #8b5cf6);
+        }
+
         .counter {
             font-size: 0.85rem;
             color: #64748b;
@@ -138,6 +164,17 @@
 <body>
 
 <div class="deck" id="deck">
+    <nav class="filters">
+        <a th:href="@{/for_ismail}" th:classappend="${type == 'all'} ? 'active'">
+            Все <span th:text="${countAll}">0</span>
+        </a>
+        <a th:href="@{/for_ismail(type='student')}" th:classappend="${type == 'student'} ? 'active'">
+            Студентки <span th:text="${countStudent}">0</span>
+        </a>
+        <a th:href="@{/for_ismail(type='employee')}" th:classappend="${type == 'employee'} ? 'active'">
+            Сотрудницы <span th:text="${countEmployee}">0</span>
+        </a>
+    </nav>
     <div class="counter" id="counter"></div>
     <div class="card" id="card" style="display:none;">
         <img id="cardPhoto" src="" alt="">
@@ -156,13 +193,14 @@
     </div>
     <div class="empty" id="empty" style="display:none;">
         <div class="emoji">🌙</div>
-        <p>На сегодня всё — карточки закончились</p>
-        <button onclick="location.reload()">Начать заново</button>
+        <p id="emptyText">На сегодня всё — карточки закончились</p>
+        <button id="btnRestart" onclick="location.reload()">Начать заново</button>
     </div>
 </div>
 
 <script th:inline="javascript">
     const cards = /*[[${cards}]]*/ [];
+    const deckType = /*[[${type}]]*/ 'all';
     let index = 0;
 
     const cardEl = document.getElementById('card');
@@ -177,6 +215,10 @@
             actionsEl.style.display = 'none';
             hintEl.style.display = 'none';
             counterEl.textContent = '';
+            if (cards.length === 0) {
+                document.getElementById('emptyText').textContent = 'В этой подборке никого нет';
+                document.getElementById('btnRestart').style.display = 'none';
+            }
             emptyEl.style.display = 'block';
             return;
         }
@@ -206,7 +248,7 @@
     });
 
     document.getElementById('btnLike').addEventListener('click', () => {
-        window.location.href = '/for_ismail/' + cards[index].id;
+        window.location.href = '/for_ismail/' + cards[index].id + '?type=' + deckType;
     });
 
     render();
