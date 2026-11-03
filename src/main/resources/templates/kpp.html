@@ -12,206 +12,194 @@
     <link rel="stylesheet" th:href="@{/css/common.css}">
 
     <style>
+        /*
+         * Все камеры видны всегда: страница занимает ровно экран, а размер плиток
+         * подбирается скриптом (fitGrid) так, чтобы влезли все камеры без прокрутки.
+         * Справа — общая лента распознаваний со всех камер.
+         */
+        html, body {
+            height: 100%;
+        }
+
         body {
-            background: radial-gradient(ellipse at top, #0f1624 0%, var(--bg-primary) 60%);
-        }
-
-        .kpp-wrapper {
-            max-width: 1400px;
-            margin: 24px auto 48px;
-            padding: 0 16px;
-        }
-
-        .kpp-header {
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            margin-bottom: 24px;
-        }
-
-        .kpp-header h1 {
-            margin: 0;
-            font-size: 1.4rem;
-            color: var(--text-primary);
-            text-align: center;
-        }
-
-        .kpp-search {
-            max-width: 480px;
-            width: 100%;
-            margin: 0 auto;
-        }
-
-        .kpp-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
-            gap: 16px;
-        }
-
-        .camera-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-lg);
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-        }
-
-        .camera-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .camera-card-title {
-            font-size: 1.05rem;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-
-        .camera-open-link {
-            font-size: 0.78rem;
-            font-weight: 600;
-            color: var(--accent);
-            white-space: nowrap;
-            transition: opacity var(--transition);
-        }
-
-        .camera-open-link:hover { opacity: 0.7; }
-
-        .building-tag {
-            font-size: 0.72rem;
-            font-weight: 600;
-            color: var(--accent-light);
-            background: var(--accent-subtle);
-            border: 1px solid var(--accent-border);
-            padding: 3px 10px;
-            border-radius: var(--radius-pill);
-            white-space: nowrap;
-        }
-
-        /* Превью с камеры: кадры по одному, а не MJPEG (см. KppController.proxySnapshot) */
-        .cam-video {
-            position: relative;
-            aspect-ratio: 4 / 3;
-            border-radius: var(--radius-lg);
-            border: 1px solid var(--border);
-            background: #000;
             overflow: hidden;
         }
 
-        .cam-video img {
+        .kpp-layout {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+        }
+
+        .cams {
+            flex: 1;
+            min-width: 0;
+            min-height: 0;
+            display: grid;
+            gap: 8px;
+            justify-content: center;
+            align-content: center;
+        }
+
+        .cam-tile {
+            position: relative;
+            aspect-ratio: 4 / 3;
+            background: #000;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        /* Камера только что кого-то распознала */
+        .cam-tile.hit {
+            border-color: var(--success);
+            box-shadow: 0 0 24px rgba(16, 185, 129, 0.35);
+        }
+
+        .cam-tile img {
             width: 100%;
             height: 100%;
             object-fit: contain;
             display: block;
         }
 
-        .cam-video-offline {
+        .cam-offline {
             position: absolute;
             inset: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 12px;
+            padding: 8px;
             text-align: center;
             color: var(--text-dim);
-            font-size: 0.82rem;
+            font-size: 0.78rem;
         }
 
-        /* Живой статус камеры */
-        .cam-status {
-            border-radius: var(--radius-lg);
-            padding: 14px 12px;
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-
-        .cam-status.idle {
-            background: rgba(100, 116, 139, 0.08);
-            border: 1px solid rgba(100, 116, 139, 0.2);
-        }
-
-        .cam-status.active {
-            background: rgba(16, 185, 129, 0.1);
-            border: 1px solid rgba(16, 185, 129, 0.5);
-            box-shadow: 0 0 24px rgba(16, 185, 129, 0.15);
-        }
-
-        .cam-status-title {
-            font-size: 1.15rem;
-            font-weight: 800;
-            letter-spacing: -0.01em;
-            color: var(--text-secondary);
-        }
-
-        .cam-status.active .cam-status-title {
-            color: #ecfdf5;
-        }
-
-        .cam-status-sub {
-            margin-top: 6px;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-        }
-
-        /* Лента распознаваний */
-        .cam-feed {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            max-height: 180px;
-            overflow-y: auto;
-        }
-
-        .feed-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-            background: var(--bg-elevated);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            padding: 8px 12px;
-            font-size: 0.85rem;
-        }
-
-        .feed-name {
+        .cam-label {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            max-width: calc(100% - 12px);
+            padding: 0.25em 0.75em;
+            border-radius: var(--radius-pill);
+            background: rgba(6, 9, 15, 0.7);
             color: var(--text-primary);
+            font-size: var(--tile-font, 12px);
             font-weight: 600;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
-        .feed-time {
-            color: var(--accent-light);
-            font-family: 'SF Mono', 'Fira Code', monospace;
+        .cam-label:hover { color: var(--accent-light); }
+
+        .cam-hit-name {
+            position: absolute;
+            left: 6px;
+            right: 6px;
+            bottom: 6px;
+            padding: 0.3em 0.8em;
+            border-radius: var(--radius-sm);
+            background: rgba(16, 185, 129, 0.85);
+            color: #fff;
+            font-size: var(--tile-font, 12px);
+            font-weight: 700;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: none;
+        }
+
+        .cam-tile.hit .cam-hit-name { display: block; }
+
+        .cams-empty {
+            color: var(--text-muted);
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        /* Общая лента распознаваний */
+        .log {
+            flex: none;
+            width: clamp(220px, 18vw, 340px);
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 10px;
+        }
+
+        .log h3 {
+            flex: none;
+            margin: 0 0 8px;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+        }
+
+        .log-list {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .log-item {
+            flex: none;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 6px 9px;
+        }
+
+        .log-name {
+            color: var(--text-primary);
+            font-weight: 600;
             font-size: 0.8rem;
+            overflow-wrap: anywhere;
+        }
+
+        .log-meta {
+            display: flex;
+            justify-content: space-between;
+            gap: 6px;
+            margin-top: 2px;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+        }
+
+        .log-meta span:first-child {
+            overflow: hidden;
+            text-overflow: ellipsis;
             white-space: nowrap;
         }
 
-        .feed-empty {
+        .log-time {
+            color: var(--accent-light);
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            white-space: nowrap;
+        }
+
+        .log-empty {
             color: var(--text-dim);
-            font-size: 0.82rem;
+            font-size: 0.78rem;
             text-align: center;
             padding: 8px;
         }
 
-        .conn-badge {
-            text-align: center;
-            font-size: 0.78rem;
-            color: var(--text-dim);
-            margin-top: 16px;
-        }
-
-        .conn-badge.ok { color: var(--success); }
-
+        /* Узкий экран: камеры сверху, лента снизу на четверть высоты */
         @media (max-width: 768px) {
-            .kpp-grid { grid-template-columns: 1fr; }
+            .kpp-layout { flex-direction: column; padding: 8px; gap: 8px; }
+            .log { width: auto; height: 28vh; }
         }
     </style>
 </head>
@@ -220,139 +208,75 @@
 
     <div th:replace="~{fragments/header :: header}"></div>
 
-    <div class="kpp-wrapper">
-        <div class="kpp-header">
-            <h1>КПП — распознавание в реальном времени</h1>
-            <input type="text" class="kpp-search" id="kpp-search"
-                placeholder="Поиск по имени во всех камерах..." oninput="applySearch()">
-        </div>
-
-        <div class="kpp-grid" id="kpp-grid">
-            <div th:each="cam : ${cameras}" class="camera-card" th:attr="data-camera=${cam.name}">
-                <div class="camera-card-header">
-                    <a class="camera-card-title" th:href="@{/kpp/{n}(n=${cam.slug})}"
-                        th:text="${cam.name}" style="color: var(--text-primary);">KPP1</a>
-                    <span class="building-tag" th:if="${cam.building != null and cam.building != ''}"
-                        th:text="${cam.building}">Корпус</span>
-                    <a class="camera-open-link" th:href="@{/kpp/{n}(n=${cam.slug})}">Открыть &rarr;</a>
-                </div>
-                <div class="cam-video" th:if="${cam.resolveStreamUrl() != null}"
+    <div class="kpp-layout">
+        <div class="cams" id="cams">
+            <div th:each="cam : ${cameras}" class="cam-tile" th:attr="data-camera=${cam.name}">
+                <img th:if="${cam.resolveStreamUrl() != null}" alt="Камера" style="display: none;"
                     th:attr="data-snapshot=@{/kpp/snapshot/{n}(n=${cam.slug})}">
-                    <img alt="Камера" style="display: none;">
-                    <div class="cam-video-offline">Подключение к камере...</div>
-                </div>
-                <div class="cam-status idle">
-                    <div class="cam-status-title">Ожидание</div>
-                    <div class="cam-status-sub">Нет лица в зоне камеры</div>
-                </div>
-                <div class="cam-feed">
-                    <div class="feed-empty">Пока нет распознаваний</div>
-                </div>
+                <div class="cam-offline"
+                    th:text="${cam.resolveStreamUrl() != null} ? 'Подключение...' : 'Нет видео'">Подключение...</div>
+                <a class="cam-label" th:href="@{/kpp/{n}(n=${cam.slug})}"
+                    th:text="${cam.building != null and cam.building != ''} ? ${cam.name} + ' · ' + ${cam.building} : ${cam.name}">KPP1</a>
+                <div class="cam-hit-name"></div>
+            </div>
+
+            <div th:if="${cameras == null or cameras.isEmpty()}" class="cams-empty">
+                Нет камер — добавьте их на странице <a href="/cameras" style="color: var(--accent);">Камеры</a>
             </div>
         </div>
 
-        <div th:if="${cameras == null or cameras.isEmpty()}" class="empty-state">
-            <div class="empty-icon">&#x1F4F9;</div>
-            <h3>Нет камер</h3>
-            <p>Добавьте камеры на странице <a href="/cameras" style="color: var(--accent);">Камеры</a> —
-                для каждой здесь появится своя панель</p>
-        </div>
-
-        <div class="conn-badge" id="conn-badge">Подключение...</div>
+        <aside class="log">
+            <h3>Распознавания</h3>
+            <div class="log-list" id="log-list">
+                <div class="log-empty">Пока нет распознаваний</div>
+            </div>
+        </aside>
     </div>
 
     <script>
-        const STATUS_TIMEOUT_MS = 2000;
-        const MAX_FEED_ITEMS = 15;
-        const resetTimers = {};
+        const HIT_TIMEOUT_MS = 2000;
+        const MAX_LOG_ITEMS = 50;
+        const ASPECT = 4 / 3;
+        const GAP = 8;
 
-        function getCard(cameraName) {
-            let card = document.querySelector('.camera-card[data-camera="' + CSS.escape(cameraName) + '"]');
-            if (card) return card;
+        const camsEl = document.getElementById('cams');
+        const logEl = document.getElementById('log-list');
+        const tiles = Array.from(document.querySelectorAll('.cam-tile'));
+        const hitTimers = {};
 
-            // Камеры нет в реестре — создаём карточку на лету, чтобы события не терялись
-            const grid = document.getElementById('kpp-grid');
-            card = document.createElement('div');
-            card.className = 'camera-card';
-            card.setAttribute('data-camera', cameraName);
-            card.innerHTML =
-                '<div class="camera-card-header"><a class="camera-card-title" style="color: var(--text-primary);"></a>' +
-                '<span class="building-tag">не в реестре</span>' +
-                '<a class="camera-open-link">Открыть &rarr;</a></div>' +
-                '<div class="cam-status idle"><div class="cam-status-title">Ожидание</div>' +
-                '<div class="cam-status-sub">Нет лица в зоне камеры</div></div>' +
-                '<div class="cam-feed"><div class="feed-empty">Пока нет распознаваний</div></div>';
-            const titleLink = card.querySelector('.camera-card-title');
-            titleLink.textContent = cameraName;
-            titleLink.href = '/kpp/' + encodeURIComponent(cameraName);
-            card.querySelector('.camera-open-link').href = '/kpp/' + encodeURIComponent(cameraName);
-            grid.appendChild(card);
-            return card;
-        }
-
-        function showRecognition(data) {
-            const cameraName = data.cameraName || 'Без камеры';
-            const personName = data.personName || 'Неизвестный';
-            const time = new Date(data.timestamp || Date.now());
-            const timeStr = time.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-            const card = getCard(cameraName);
-
-            // Живой статус
-            const statusEl = card.querySelector('.cam-status');
-            statusEl.className = 'cam-status active';
-            statusEl.querySelector('.cam-status-title').textContent = personName;
-            statusEl.querySelector('.cam-status-sub').textContent = 'Доступ разрешён · ' + timeStr;
-
-            if (resetTimers[cameraName]) clearTimeout(resetTimers[cameraName]);
-            resetTimers[cameraName] = setTimeout(function () {
-                statusEl.className = 'cam-status idle';
-                statusEl.querySelector('.cam-status-title').textContent = 'Ожидание';
-                statusEl.querySelector('.cam-status-sub').textContent = 'Нет лица в зоне камеры';
-            }, STATUS_TIMEOUT_MS);
-
-            // Лента
-            const feed = card.querySelector('.cam-feed');
-            const empty = feed.querySelector('.feed-empty');
-            if (empty) empty.remove();
-
-            const item = document.createElement('div');
-            item.className = 'feed-item';
-            const nameEl = document.createElement('span');
-            nameEl.className = 'feed-name';
-            nameEl.textContent = personName;
-            const timeEl = document.createElement('span');
-            timeEl.className = 'feed-time';
-            timeEl.textContent = timeStr;
-            item.appendChild(nameEl);
-            item.appendChild(timeEl);
-            feed.prepend(item);
-
-            while (feed.children.length > MAX_FEED_ITEMS) {
-                feed.removeChild(feed.lastChild);
+        // --- Раскладка: перебираем число колонок и берём то, при котором плитка
+        // крупнее всего, но все камеры влезают и по ширине, и по высоте
+        function fitGrid() {
+            const n = tiles.length;
+            if (!n) return;
+            const w = camsEl.clientWidth;
+            const h = camsEl.clientHeight;
+            let best = { cols: 1, size: 0 };
+            for (let cols = 1; cols <= n; cols++) {
+                const rows = Math.ceil(n / cols);
+                const byWidth = (w - GAP * (cols - 1)) / cols;
+                const byHeight = (h - GAP * (rows - 1)) / rows * ASPECT;
+                const size = Math.min(byWidth, byHeight);
+                if (size > best.size) best = { cols: cols, size: size };
             }
-
-            applySearch();
+            const tileW = Math.max(80, Math.floor(best.size));
+            camsEl.style.gridTemplateColumns = 'repeat(' + best.cols + ', ' + tileW + 'px)';
+            // Подписи на плитке растут и уменьшаются вместе с ней
+            camsEl.style.setProperty('--tile-font', Math.max(9, Math.min(14, tileW / 20)) + 'px');
         }
 
-        // Поиск по имени во всех лентах
-        function applySearch() {
-            const q = document.getElementById('kpp-search').value.trim().toLowerCase();
-            document.querySelectorAll('.feed-item').forEach(function (item) {
-                const name = item.querySelector('.feed-name').textContent.toLowerCase();
-                item.style.display = (!q || name.includes(q)) ? '' : 'none';
-            });
-        }
+        new ResizeObserver(fitGrid).observe(camsEl);
+        fitGrid();
 
-        // --- Превью камер: следующий кадр запрашиваем, только когда пришёл предыдущий,
-        // поэтому медленная сеть просто снижает частоту, а запросы не копятся
+        // --- Превью: кадры по одному через /kpp/snapshot (MJPEG на каждую камеру
+        // упёрся бы в лимит 6 соединений на хост). Следующий кадр — только после
+        // прихода предыдущего, поэтому медленная сеть снижает частоту, а не копит запросы
         const SNAPSHOT_INTERVAL_MS = 500;
         const SNAPSHOT_RETRY_MS = 3000;
 
-        function startPreview(box) {
-            const base = box.getAttribute('data-snapshot');
-            const img = box.querySelector('img');
-            const offline = box.querySelector('.cam-video-offline');
+        function startPreview(img) {
+            const base = img.getAttribute('data-snapshot');
+            const offline = img.parentElement.querySelector('.cam-offline');
             let timer = null;
 
             function next(delay) {
@@ -375,7 +299,7 @@
             img.addEventListener('error', function () {
                 img.style.display = 'none';
                 offline.style.display = '';
-                offline.textContent = 'Видео недоступно — переподключаюсь...';
+                offline.textContent = 'Видео недоступно';
                 next(SNAPSHOT_RETRY_MS);
             });
 
@@ -386,19 +310,56 @@
             load();
         }
 
-        document.querySelectorAll('.cam-video[data-snapshot]').forEach(startPreview);
+        document.querySelectorAll('.cam-tile img[data-snapshot]').forEach(startPreview);
+
+        // --- Распознавания: подсветка плитки + запись в общую ленту
+        function showRecognition(data) {
+            const cameraName = data.cameraName || 'Без камеры';
+            const personName = data.personName && data.personName.trim() !== '' ? data.personName : 'Неизвестный';
+            const time = new Date(data.timestamp || Date.now());
+            const timeStr = time.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            const tile = tiles.find(function (t) { return t.getAttribute('data-camera') === cameraName; });
+            if (tile) {
+                tile.querySelector('.cam-hit-name').textContent = personName;
+                tile.classList.add('hit');
+                clearTimeout(hitTimers[cameraName]);
+                hitTimers[cameraName] = setTimeout(function () { tile.classList.remove('hit'); }, HIT_TIMEOUT_MS);
+            }
+
+            const empty = logEl.querySelector('.log-empty');
+            if (empty) empty.remove();
+
+            const item = document.createElement('div');
+            item.className = 'log-item';
+            const nameEl = document.createElement('div');
+            nameEl.className = 'log-name';
+            nameEl.textContent = personName;
+            const meta = document.createElement('div');
+            meta.className = 'log-meta';
+            const camEl = document.createElement('span');
+            camEl.textContent = cameraName;
+            const timeEl = document.createElement('span');
+            timeEl.className = 'log-time';
+            timeEl.textContent = timeStr;
+            meta.appendChild(camEl);
+            meta.appendChild(timeEl);
+            item.appendChild(nameEl);
+            item.appendChild(meta);
+            logEl.prepend(item);
+
+            while (logEl.children.length > MAX_LOG_ITEMS) {
+                logEl.removeChild(logEl.lastChild);
+            }
+        }
 
         function connectWs() {
             const socket = new SockJS('/ws');
             const stompClient = Stomp.over(socket);
             stompClient.debug = null;
-            const badge = document.getElementById('conn-badge');
-
             const headerStatus = document.getElementById('connection-status');
 
             stompClient.connect({}, function () {
-                badge.textContent = 'Подключено';
-                badge.className = 'conn-badge ok';
                 headerStatus.innerHTML = '<span>Подключено</span>';
                 headerStatus.className = 'connection-status connected';
                 stompClient.subscribe('/topic/attendance', function (message) {
@@ -407,8 +368,6 @@
                     } catch (e) { console.error('Bad message', e); }
                 });
             }, function () {
-                badge.textContent = 'Переподключение...';
-                badge.className = 'conn-badge';
                 headerStatus.innerHTML = '<span>Отключено</span>';
                 headerStatus.className = 'connection-status disconnected';
                 setTimeout(connectWs, 3000);
