@@ -217,10 +217,10 @@
                                    placeholder="rtsp://192.168.1.10:554/stream">
                         </div>
                         <div>
-                            <label for="espUrl">ESP URL (турникет)</label>
+                            <label for="espUrl">ESP URL (реле турникета) — необязательно</label>
                             <input type="text" id="espUrl" name="espUrl"
                                    th:value="${editing != null} ? ${editing.espUrl} : ''"
-                                   placeholder="http://192.168.1.50/open">
+                                   placeholder="пусто — камера без турникета">
                         </div>
                         <div>
                             <label for="streamUrl">Stream URL — только если клиент на другой машине</label>
@@ -230,7 +230,8 @@
                         </div>
                     </div>
                     <p class="hint">
-                        Название можно писать по-русски. Порт стрима назначается сам, начиная с 8090 —
+                        Название можно писать по-русски. Без ESP URL камера только распознаёт
+                        и пишет в журнал — турникет не открывается. Порт стрима назначается сам, начиная с 8090 —
                         заполняйте Stream URL, только если Python-клиент запущен не на этом сервере.
                     </p>
                     <div class="camera-actions">
@@ -253,8 +254,9 @@
                         <div class="camera-urls" th:if="${camera.cameraUrl != null and camera.cameraUrl != ''}">
                             <span>Камера:</span> <span th:text="${camera.cameraUrl}">rtsp://...</span>
                         </div>
-                        <div class="camera-urls" th:if="${camera.espUrl != null and camera.espUrl != ''}">
-                            <span>ESP:</span> <span th:text="${camera.espUrl}">http://...</span>
+                        <div class="camera-urls">
+                            <span>ESP:</span>
+                            <span th:text="${camera.espUrl != null and camera.espUrl != ''} ? ${camera.espUrl} : 'нет — без турникета'">http://...</span>
                         </div>
                         <div class="camera-urls">
                             <span>Stream:</span>

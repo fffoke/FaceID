@@ -73,4 +73,17 @@ public class Camera {
         }
         return null;
     }
+
+    /** Адрес одиночного кадра: тот же сервер, что и стрим, путь /snapshot. */
+    @Transient
+    public String resolveSnapshotUrl() {
+        String stream = resolveStreamUrl();
+        if (stream == null) {
+            return null;
+        }
+        if (stream.endsWith("/stream")) {
+            return stream.substring(0, stream.length() - "/stream".length()) + "/snapshot";
+        }
+        return stream.replaceAll("/+$", "") + "/snapshot";
+    }
 }

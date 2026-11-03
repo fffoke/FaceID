@@ -160,8 +160,9 @@ def fetch_camera_config(cfg: Config, stream_port_from_cli: bool = False) -> Conf
         # в имени systemd-юнита не живёт), а в журнал посещений пишется имя как в панели
         if data.get("name"):
             cfg.camera_name = data["name"]
-        if data.get("espUrl"):
-            cfg.esp_url = data["espUrl"]
+        # Турникет необязателен: пустой ESP в реестре значит «камера без реле»,
+        # а не «возьми адрес из settings.json» — иначе убранное реле продолжало бы щёлкать
+        cfg.esp_url = data.get("espUrl") or ""
         if data.get("cameraUrl"):
             cfg.camera_url = data["cameraUrl"]
         # Порт стрима держит панель — так он не разъезжается с тем, что она проксирует

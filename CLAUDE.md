@@ -105,6 +105,10 @@ Units live in `deploy/systemd/`.
   are open without login; the header shows the nav menu only to authenticated users
 - `/kpp/stream/{slug}` — MJPEG proxied from the Python client, so only port 8080
   needs to be reachable from tablets
+- `/kpp/snapshot/{slug}` — single JPEG from the client's `/snapshot`. The `/kpp` index
+  polls these instead of holding MJPEG: browsers allow only 6 connections per host
+- `espUrl` is optional — a camera without it only recognizes and logs; an empty value
+  in the registry overrides `esp_url` from `settings.json`
 
 ### Photo management
 

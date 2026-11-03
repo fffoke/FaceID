@@ -44,7 +44,7 @@
 
         .kpp-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
             gap: 16px;
         }
 
@@ -93,10 +93,39 @@
             white-space: nowrap;
         }
 
+        /* Превью с камеры: кадры по одному, а не MJPEG (см. KppController.proxySnapshot) */
+        .cam-video {
+            position: relative;
+            aspect-ratio: 4 / 3;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            background: #000;
+            overflow: hidden;
+        }
+
+        .cam-video img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .cam-video-offline {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 0.82rem;
+        }
+
         /* Живой статус камеры */
         .cam-status {
             border-radius: var(--radius-lg);
-            padding: 22px 16px;
+            padding: 14px 12px;
             text-align: center;
             transition: all 0.3s ease;
         }
@@ -134,7 +163,7 @@
             display: flex;
             flex-direction: column;
             gap: 6px;
-            max-height: 260px;
+            max-height: 180px;
             overflow-y: auto;
         }
 
@@ -206,6 +235,11 @@
                     <span class="building-tag" th:if="${cam.building != null and cam.building != ''}"
                         th:text="${cam.building}">Корпус</span>
                     <a class="camera-open-link" th:href="@{/kpp/{n}(n=${cam.slug})}">Открыть &rarr;</a>
+                </div>
+                <div class="cam-video" th:if="${cam.resolveStreamUrl() != null}"
+                    th:attr="data-snapshot=@{/kpp/snapshot/{n}(n=${cam.slug})}">
+                    <img alt="Камера" style="display: none;">
+                    <div class="cam-video-offline">Подключение к камере...</div>
                 </div>
                 <div class="cam-status idle">
                     <div class="cam-status-title">Ожидание</div>
@@ -309,6 +343,50 @@
                 item.style.display = (!q || name.includes(q)) ? '' : 'none';
             });
         }
+
+        // --- Превью камер: следующий кадр запрашиваем, только когда пришёл предыдущий,
+        // поэтому медленная сеть просто снижает частоту, а запросы не копятся
+        const SNAPSHOT_INTERVAL_MS = 500;
+        const SNAPSHOT_RETRY_MS = 3000;
+
+        function startPreview(box) {
+            const base = box.getAttribute('data-snapshot');
+            const img = box.querySelector('img');
+            const offline = box.querySelector('.cam-video-offline');
+            let timer = null;
+
+            function next(delay) {
+                clearTimeout(timer);
+                timer = setTimeout(load, delay);
+            }
+
+            function load() {
+                // Вкладка в фоне — не гоняем трафик, вернёмся по visibilitychange
+                if (document.hidden) return;
+                img.src = base + '?t=' + Date.now();
+            }
+
+            img.addEventListener('load', function () {
+                img.style.display = '';
+                offline.style.display = 'none';
+                next(SNAPSHOT_INTERVAL_MS);
+            });
+
+            img.addEventListener('error', function () {
+                img.style.display = 'none';
+                offline.style.display = '';
+                offline.textContent = 'Видео недоступно — переподключаюсь...';
+                next(SNAPSHOT_RETRY_MS);
+            });
+
+            document.addEventListener('visibilitychange', function () {
+                if (!document.hidden) next(0);
+            });
+
+            load();
+        }
+
+        document.querySelectorAll('.cam-video[data-snapshot]').forEach(startPreview);
 
         function connectWs() {
             const socket = new SockJS('/ws');

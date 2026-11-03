@@ -93,6 +93,40 @@ public class KppController {
         }
     }
 
+    /**
+     * Один кадр с камеры для общей страницы КПП. Там камер много, а держать по
+     * MJPEG-соединению на каждую нельзя: браузер даёт всего 6 соединений на хост,
+     * и седьмой стрим (вместе с WebSocket) просто повиснет.
+     */
+    @GetMapping("/kpp/snapshot/{key}")
+    public void proxySnapshot(@PathVariable String key, HttpServletResponse response) throws IOException {
+        Camera camera = cameraService.find(key).orElse(null);
+        String snapshotUrl = camera != null ? camera.resolveSnapshotUrl() : null;
+        if (snapshotUrl == null) {
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+
+        try {
+            URLConnection upstream = new URL(snapshotUrl).openConnection();
+            upstream.setConnectTimeout(2000);
+            upstream.setReadTimeout(3000);
+            byte[] jpeg;
+            try (InputStream in = upstream.getInputStream()) {
+                jpeg = in.readAllBytes();
+            }
+            response.setContentType("image/jpeg");
+            response.setHeader("Cache-Control", "no-cache, private");
+            response.setContentLength(jpeg.length);
+            response.getOutputStream().write(jpeg);
+        } catch (IOException e) {
+            // Python-клиент не запущен или ещё не получил кадр — страница повторит позже
+            if (!response.isCommitted()) {
+                response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+            }
+        }
+    }
+
     // Старые адреса КПП-экранов ведут на общую страницу (на мониторах могли остаться закладки)
     @GetMapping({"/kpp1", "/kpp2"})
     public String kppLegacy() {

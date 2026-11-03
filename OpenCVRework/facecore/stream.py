@@ -8,6 +8,11 @@ import cv2 as cv
 
 JPEG_QUALITY = 70
 RETRY_DELAY = 3.0  # сек между попытками занять порт стрима
+# Общая страница КПП не держит MJPEG, а дёргает /snapshot раз в полсекунды:
+# у браузера всего 6 соединений на хост, и с десятком камер стримы бы встали.
+SNAPSHOT_KEEPALIVE = 3.0  # сек после запроса снапшота, пока кадры продолжают кодироваться
+SNAPSHOT_MAX_AGE = 1.0    # кадр старше — устарел, ждём свежий
+SNAPSHOT_WAIT = 1.5       # сколько ждать свежий кадр
 
 
 class MjpegStream:
@@ -22,11 +27,27 @@ class MjpegStream:
         self.port = port
         self._cond = threading.Condition()
         self._frame = None
+        self._frame_time = 0.0
         self._clients = 0
+        self._snapshot_until = 0.0
         self._server = None
 
     def has_clients(self) -> bool:
-        return self._clients > 0
+        return self._clients > 0 or time.time() < self._snapshot_until
+
+    def snapshot(self):
+        """Свежий JPEG-кадр или None, если его нет (клиент только поднялся, камера молчит)."""
+        self._snapshot_until = time.time() + SNAPSHOT_KEEPALIVE
+        deadline = time.time() + SNAPSHOT_WAIT
+        with self._cond:
+            # Пока снапшоты не просили, основной цикл кадры не кодировал —
+            # последний может быть часовой давности
+            while time.time() - self._frame_time > SNAPSHOT_MAX_AGE:
+                left = deadline - time.time()
+                if left <= 0:
+                    return None
+                self._cond.wait(timeout=left)
+            return self._frame
 
     def publish(self, frame):
         """Публикует кадр. Вызывается из основного цикла только при активных зрителях."""
@@ -35,6 +56,7 @@ class MjpegStream:
             return
         with self._cond:
             self._frame = jpg.tobytes()
+            self._frame_time = time.time()
             self._cond.notify_all()
 
     def start(self):
@@ -71,7 +93,11 @@ class MjpegStream:
 def _handler_factory(stream: MjpegStream):
     class _StreamHandler(BaseHTTPRequestHandler):
         def do_GET(self):
-            if self.path != "/stream":
+            path = self.path.split("?", 1)[0]
+            if path == "/snapshot":
+                self._send_snapshot()
+                return
+            if path != "/stream":
                 self.send_response(404)
                 self.end_headers()
                 return
@@ -99,6 +125,22 @@ def _handler_factory(stream: MjpegStream):
             finally:
                 stream._clients -= 1
                 print(f"[stream] 👁 Зритель отключился ({stream._clients} активных)")
+
+        def _send_snapshot(self):
+            frame = stream.snapshot()
+            if frame is None:
+                self.send_response(503)
+                self.end_headers()
+                return
+            try:
+                self.send_response(200)
+                self.send_header("Cache-Control", "no-cache, private")
+                self.send_header("Content-Type", "image/jpeg")
+                self.send_header("Content-Length", str(len(frame)))
+                self.end_headers()
+                self.wfile.write(frame)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
 
         def log_message(self, fmt, *args):
             pass  # не засоряем консоль access-логами
