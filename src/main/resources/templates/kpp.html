@@ -118,6 +118,9 @@
 
         .cam-tile.hit .cam-hit-name { display: block; }
 
+        /* Камера скрыта фильтром */
+        .cam-tile.off { display: none; }
+
         .cams-empty {
             color: var(--text-muted);
             text-align: center;
@@ -135,13 +138,108 @@
             border: 1px solid var(--border);
             border-radius: var(--radius-lg);
             padding: 10px;
+            position: relative;
+        }
+
+        .log-head {
+            flex: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
         }
 
         .log h3 {
-            flex: none;
-            margin: 0 0 8px;
+            margin: 0;
             font-size: 0.82rem;
             color: var(--text-secondary);
+        }
+
+        .filter-btn {
+            padding: 6px 10px;
+            border-radius: var(--radius-pill);
+            border: 1px solid var(--border-hover);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .filter-btn:hover { color: var(--text-primary); }
+        .filter-btn.partial { border-color: var(--accent-border); color: var(--accent-light); }
+
+        /* Выбор камер — поверх ленты */
+        .filter-panel {
+            position: absolute;
+            top: 46px;
+            left: 10px;
+            right: 10px;
+            bottom: 10px;
+            z-index: 5;
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-hover);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            padding: 10px;
+        }
+
+        .filter-panel.open { display: flex; }
+
+        .filter-actions {
+            flex: none;
+            display: flex;
+            gap: 6px;
+        }
+
+        .filter-actions button {
+            flex: 1;
+            padding: 6px 8px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+
+        .filter-list {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .filter-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 6px;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        .filter-item:hover { background: rgba(255, 255, 255, 0.04); }
+
+        .filter-item input {
+            width: 16px;
+            height: 16px;
+            flex: none;
+            accent-color: var(--accent);
+        }
+
+        .filter-item small {
+            color: var(--text-muted);
+            font-size: 0.72rem;
         }
 
         .log-list {
@@ -210,7 +308,8 @@
 
     <div class="kpp-layout">
         <div class="cams" id="cams">
-            <div th:each="cam : ${cameras}" class="cam-tile" th:attr="data-camera=${cam.name}">
+            <div th:each="cam : ${cameras}" class="cam-tile"
+                th:attr="data-camera=${cam.name},data-slug=${cam.slug},data-building=${cam.building}">
                 <img th:if="${cam.resolveStreamUrl() != null}" alt="Камера" style="display: none;"
                     th:attr="data-snapshot=@{/kpp/snapshot/{n}(n=${cam.slug})}">
                 <div class="cam-offline"
@@ -223,10 +322,24 @@
             <div th:if="${cameras == null or cameras.isEmpty()}" class="cams-empty">
                 Нет камер — добавьте их на странице <a href="/cameras" style="color: var(--accent);">Камеры</a>
             </div>
+            <div class="cams-empty" id="cams-all-off" style="display: none;">
+                Все камеры скрыты — выберите нужные кнопкой «Камеры» справа
+            </div>
         </div>
 
         <aside class="log">
-            <h3>Распознавания</h3>
+            <div class="log-head">
+                <h3>Распознавания</h3>
+                <button type="button" class="filter-btn" id="filter-btn"
+                    th:if="${cameras != null and !cameras.isEmpty()}">Камеры</button>
+            </div>
+            <div class="filter-panel" id="filter-panel">
+                <div class="filter-actions">
+                    <button type="button" id="filter-all">Все</button>
+                    <button type="button" id="filter-none">Ни одной</button>
+                </div>
+                <div class="filter-list" id="filter-list"></div>
+            </div>
             <div class="log-list" id="log-list">
                 <div class="log-empty">Пока нет распознаваний</div>
             </div>
@@ -244,10 +357,15 @@
         const tiles = Array.from(document.querySelectorAll('.cam-tile'));
         const hitTimers = {};
 
+        function visibleTiles() {
+            return tiles.filter(function (t) { return !t.classList.contains('off'); });
+        }
+
         // --- Раскладка: перебираем число колонок и берём то, при котором плитка
         // крупнее всего, но все камеры влезают и по ширине, и по высоте
         function fitGrid() {
-            const n = tiles.length;
+            const n = visibleTiles().length;
+            document.getElementById('cams-all-off').style.display = (tiles.length && !n) ? '' : 'none';
             if (!n) return;
             const w = camsEl.clientWidth;
             const h = camsEl.clientHeight;
@@ -285,8 +403,9 @@
             }
 
             function load() {
-                // Вкладка в фоне — не гоняем трафик, вернёмся по visibilitychange
-                if (document.hidden) return;
+                // Вкладка в фоне — не гоняем трафик, вернёмся по visibilitychange.
+                // Скрытая фильтром камера тоже не грузится — её разбудит applyFilter
+                if (document.hidden || img.parentElement.classList.contains('off')) return;
                 img.src = base + '?t=' + Date.now();
             }
 
@@ -307,10 +426,104 @@
                 if (!document.hidden) next(0);
             });
 
-            load();
+            img.wake = function () { next(0); };
+
+            // Через таймер, а не сразу: к этому моменту фильтр уже пометит скрытые камеры
+            next(0);
         }
 
         document.querySelectorAll('.cam-tile img[data-snapshot]').forEach(startPreview);
+
+        // --- Фильтр камер. Храним в браузере именно скрытые, а не показанные:
+        // так новая камера из реестра сразу появится на всех экранах.
+        // У каждого планшета/монитора свой набор — он смотрит на свой КПП
+        const FILTER_KEY = 'kpp.hiddenCameras';
+        const filterBtn = document.getElementById('filter-btn');
+        const filterPanel = document.getElementById('filter-panel');
+        const filterList = document.getElementById('filter-list');
+
+        function loadHidden() {
+            try {
+                return new Set(JSON.parse(localStorage.getItem(FILTER_KEY) || '[]'));
+            } catch (e) {
+                return new Set();
+            }
+        }
+
+        let hidden = loadHidden();
+
+        function applyFilter() {
+            tiles.forEach(function (t) {
+                const wasOff = t.classList.contains('off');
+                const off = hidden.has(t.getAttribute('data-slug'));
+                t.classList.toggle('off', off);
+                const img = t.querySelector('img[data-snapshot]');
+                if (wasOff && !off && img && img.wake) img.wake();
+            });
+            filterList.querySelectorAll('input').forEach(function (box) {
+                box.checked = !hidden.has(box.value);
+            });
+            if (filterBtn) {
+                const shown = visibleTiles().length;
+                filterBtn.textContent = 'Камеры ' + shown + '/' + tiles.length;
+                filterBtn.classList.toggle('partial', shown < tiles.length);
+            }
+            fitGrid();
+        }
+
+        function saveHidden() {
+            localStorage.setItem(FILTER_KEY, JSON.stringify(Array.from(hidden)));
+            applyFilter();
+        }
+
+        tiles.forEach(function (t) {
+            const slug = t.getAttribute('data-slug');
+            const label = document.createElement('label');
+            label.className = 'filter-item';
+            const box = document.createElement('input');
+            box.type = 'checkbox';
+            box.value = slug;
+            box.addEventListener('change', function () {
+                if (box.checked) hidden.delete(slug); else hidden.add(slug);
+                saveHidden();
+            });
+            const text = document.createElement('span');
+            text.textContent = t.getAttribute('data-camera');
+            const building = t.getAttribute('data-building');
+            if (building) {
+                const small = document.createElement('small');
+                small.textContent = ' · ' + building;
+                text.appendChild(small);
+            }
+            label.appendChild(box);
+            label.appendChild(text);
+            filterList.appendChild(label);
+        });
+
+        if (filterBtn) {
+            filterBtn.addEventListener('click', function () {
+                filterPanel.classList.toggle('open');
+            });
+        }
+
+        document.getElementById('filter-all').addEventListener('click', function () {
+            hidden = new Set();
+            saveHidden();
+        });
+
+        document.getElementById('filter-none').addEventListener('click', function () {
+            hidden = new Set(tiles.map(function (t) { return t.getAttribute('data-slug'); }));
+            saveHidden();
+        });
+
+        // Клик мимо панели закрывает её
+        document.addEventListener('click', function (e) {
+            if (filterPanel.classList.contains('open') && !filterPanel.contains(e.target) && e.target !== filterBtn) {
+                filterPanel.classList.remove('open');
+            }
+        });
+
+        applyFilter();
 
         // --- Распознавания: подсветка плитки + запись в общую ленту
         function showRecognition(data) {
