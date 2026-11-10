@@ -2,8 +2,7 @@
 <header class="header" th:fragment="header" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
     <div class="header-content">
         <a href="/" class="logo">
-            <span class="logo-icon">FP</span>
-            <span>FacePanel</span>
+            <img class="logo-img" th:src="@{/img/brand.png}" src="/img/brand.png" alt="Логотип">
         </a>
 
         <nav class="nav-menu" id="nav-menu" sec:authorize="isAuthenticated()">

@@ -131,6 +131,13 @@ img { max-width: 100%; display: block; }
 
 .logo:hover { opacity: 0.85; }
 
+/* Логотип-картинка в шапке: высота под 60px хедера, ширина по пропорциям */
+.logo-img {
+    height: 44px;
+    width: auto;
+    display: block;
+}
+
 .logo-icon {
     width: 34px;
     height: 34px;
