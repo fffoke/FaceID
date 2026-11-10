@@ -1,0 +1,23 @@
+# PostgreSQL для локального запуска и демонстраций.
+# Имя базы, пользователь и пароль совпадают с application.properties,
+# поэтому панель подключается без дополнительной настройки.
+#
+#   docker compose up -d      # поднять
+#   docker compose down       # остановить (данные остаются в томе)
+#   docker compose down -v    # остановить и стереть базу
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: app_db
+      POSTGRES_USER: app_user
+      POSTGRES_PASSWORD: STRONG_PASSWORD_HERE
+    ports:
+      # Только с этой же машины: базе незачем быть видимой из сети
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - facepanel-db:/var/lib/postgresql/data
+
+volumes:
+  facepanel-db:
