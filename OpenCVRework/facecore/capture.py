@@ -39,6 +39,10 @@ class VideoStream:
         self.flip = flip
 
         self._queue = deque(maxlen=1)
+        # Номер последнего кадра — по нему поток показа ждёт следующий кадр,
+        # а не публикует один и тот же кадр по кругу
+        self._seq = 0
+        self._new_frame = threading.Condition()
         self._cap = None
         self._stop = threading.Event()
         self._thread = None
@@ -89,6 +93,9 @@ class VideoStream:
                 if self.flip:
                     cv.flip(frame, -1, dst=frame)  # in-place, без лишней аллокации
                 self._queue.append(frame)
+                with self._new_frame:
+                    self._seq += 1
+                    self._new_frame.notify_all()
                 if not self.healthy.is_set():
                     self.healthy.set()
                     print(f"[face] ✅ Поток восстановлен: {self.source}")
@@ -113,6 +120,18 @@ class VideoStream:
     def latest(self):
         """Самый свежий кадр или None."""
         return self._queue[0] if self._queue else None
+
+    def wait_frame(self, last_seq: int, timeout: float):
+        """
+        Ждёт кадр новее last_seq. Возвращает (seq, frame) или (last_seq, None) по таймауту.
+        Кадр не копируется — изменять его нельзя, он же уходит в распознавание.
+        """
+        with self._new_frame:
+            if self._seq == last_seq:
+                self._new_frame.wait(timeout=timeout)
+            if self._seq == last_seq or not self._queue:
+                return last_seq, None
+            return self._seq, self._queue[0]
 
     def stop(self):
         self._stop.set()
