@@ -29,6 +29,10 @@ class Config:
 
     # --- обработка ---
     threshold: float = 0.7
+    # Насколько лучший кандидат должен обгонять второго (другого человека).
+    # Без этого при низком пороге похожие люди путаются: «Иванов 0.55, Петров 0.53»
+    # засчитывалось как Иванов, хотя модель по сути угадывала.
+    margin: float = 0.07
     min_frames_between_events: float = 3
     target_fps: int = 10
     cv_threads: int = 2
@@ -76,6 +80,7 @@ def from_settings(settings: dict) -> Config:
     cfg.camera_key = cfg.camera_name
     cfg.esp_url = settings.get("esp_url", cfg.esp_url)
     cfg.threshold = settings.get("threshold", cfg.threshold)
+    cfg.margin = settings.get("margin", cfg.margin)
     cfg.min_frames_between_events = settings.get("min_frames_between_events", cfg.min_frames_between_events)
     cfg.target_fps = settings.get("target_fps", cfg.target_fps)
     cfg.cv_threads = settings.get("cv_threads", cfg.cv_threads)

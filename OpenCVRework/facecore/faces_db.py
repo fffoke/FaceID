@@ -47,18 +47,31 @@ class FaceDatabase:
     # ------------------------------------------------------------------ поиск
 
     def search(self, emb):
-        """Ближайшее лицо в индексе: (имя, близость) либо ('Unknown', 0.0)."""
+        """
+        Ближайшее лицо: (имя, близость, близость второго кандидата) либо ('Unknown', 0.0, 0.0).
+
+        Второй кандидат — ближайший человек с другим именем. Отрыв первого от него
+        показывает, узнан человек или модель выбирает между похожими лицами.
+        """
         with self._lock:
             if self._index.ntotal == 0:
-                return "Unknown", 0.0
+                return "Unknown", 0.0, 0.0
             query = emb.reshape(1, -1).astype(np.float32).copy()
             faiss.normalize_L2(query)
-            scores, indices = self._index.search(query, 1)
-            score = float(scores[0][0])
-            idx = int(indices[0][0])
-            if idx < 0 or idx >= len(self.known_names):
-                return "Unknown", 0.0
-            return self.known_names[idx], score
+            scores, indices = self._index.search(query, min(5, self._index.ntotal))
+            best_name, best_score, second_score = None, 0.0, 0.0
+            for score, idx in zip(scores[0], indices[0]):
+                if idx < 0 or idx >= len(self.known_names):
+                    continue
+                name = self.known_names[idx]
+                if best_name is None:
+                    best_name, best_score = name, float(score)
+                elif name != best_name:
+                    second_score = float(score)
+                    break
+            if best_name is None:
+                return "Unknown", 0.0, 0.0
+            return best_name, best_score, second_score
 
     @property
     def size(self):

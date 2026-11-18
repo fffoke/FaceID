@@ -57,7 +57,7 @@ def run(cfg):
 
     overlay = Overlay()
     stop = threading.Event()
-    threading.Thread(target=_display_loop, args=(video, stream, overlay, cfg.threshold, stop),
+    threading.Thread(target=_display_loop, args=(video, stream, overlay, stop),
                      daemon=True).start()
 
     print(f"[face] 🚀 Камера запущена (name={cfg.camera_name}), начинаю распознавание...")
@@ -93,22 +93,25 @@ def run(cfg):
             if faces[1] is not None:
                 for face_data in faces[1]:
                     emb = models.embed(frame, face_data)
-                    best_name, best_score = faces_db.search(emb)
+                    best_name, best_score, second_score = faces_db.search(emb)
+                    recognized = (best_score >= cfg.threshold
+                                  and best_score - second_score >= cfg.margin)
 
-                    if best_score >= cfg.threshold:
+                    if recognized:
                         now = time.time()
                         if now - last_seen.get(best_name, 0) > cfg.min_frames_between_events:
                             backend.send(best_name, float(best_score), cfg.camera_name)
                             last_seen[best_name] = now
 
-                    drawn.append((list(map(int, face_data[:4])), best_name, float(best_score)))
+                    drawn.append((list(map(int, face_data[:4])), best_name,
+                                  float(best_score), recognized))
 
             overlay.set(drawn)
 
             if cfg.show_window:
                 display_frame = frame.copy()
-                for box, name, score in drawn:
-                    _draw_face(display_frame, box, name, score, cfg.threshold)
+                for face in drawn:
+                    _draw_face(display_frame, *face)
                 cv.imshow(f"FacePanel - {cfg.camera_name}", display_frame)
                 if (cv.waitKey(1) & 0xFF) == ord("q"):
                     break
@@ -123,7 +126,7 @@ def run(cfg):
         print(f"[face] ✅ Обработано кадров: {frame_count}")
 
 
-def _display_loop(video, stream, overlay, threshold, stop):
+def _display_loop(video, stream, overlay, stop):
     """
     Публикует в MJPEG каждый кадр камеры с последними рамками.
 
@@ -139,13 +142,13 @@ def _display_loop(video, stream, overlay, threshold, stop):
         if faces:
             # Кадр общий с распознаванием — рисуем на копии
             frame = frame.copy()
-            for box, name, score in faces:
-                _draw_face(frame, box, name, score, threshold)
+            for face in faces:
+                _draw_face(frame, *face)
         stream.publish(frame)
 
 
-def _draw_face(frame, box, name, score, threshold):
-    color = (0, 255, 0) if score >= threshold else (0, 0, 255)
+def _draw_face(frame, box, name, score, recognized):
+    color = (0, 255, 0) if recognized else (0, 0, 255)
     cv.rectangle(frame, (box[0], box[1]), (box[0] + box[2], box[1] + box[3]), color, 2)
     cv.putText(frame, f"{name} ({score:.2f})", (box[0], max(30, box[1] - 10)),
                cv.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
